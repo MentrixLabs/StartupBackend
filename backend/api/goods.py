@@ -9,7 +9,8 @@ from db.user.models import User
 
 router = APIRouter()
 
-@router.get("/", response_model=List[GoodsOut])
+# Убираем слеш в декораторах — теперь запросы на /goods (без слеша) будут обрабатываться
+@router.get("", response_model=List[GoodsOut])
 async def get_goods(current_user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         items = await OzonDAO.find_all(user_id=current_user.id)
@@ -30,7 +31,7 @@ async def get_goods(current_user: User = Depends(get_current_user)):
             })
         return result
 
-@router.post("/", response_model=GoodsOut)
+@router.post("", response_model=GoodsOut)
 async def create_goods(goods: GoodsCreate, current_user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         new_item = await OzonDAO.add(
