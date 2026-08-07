@@ -1,0 +1,1 @@
+Copyright 2023 The Jaro Project Authors (https://github.com/agyeiarcher/Jaro), Copyright 2024 Cyrillic set by Denis Ignatov (denis@mutno.me)

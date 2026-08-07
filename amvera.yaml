@@ -1,0 +1,23 @@
+version: 1
+
+services:
+  backend:
+    type: app
+    image: python:3.11-slim
+    build:
+      # Устанавливаем зависимости и запускаем приложение
+      command: |
+        pip install --no-cache-dir -r utils/requirements/requirements.txt
+        uvicorn backend.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - port: 8000
+        target: 8000
+    env:
+      - DB_HOST=amvera-mentrixlabs-cnpg-mlstartupdb-rw
+      - DB_PORT=5432
+      - DB_NAME=mlStartupDB
+      - DB_USER=EgorAndreevich
+      - DB_PASSWORD=EgorAndreevich
+      - JWT_KEY=your_very_strong_jwt_secret_key_here
+      - JWT_ALG=HS256
+      - MODE=PROD

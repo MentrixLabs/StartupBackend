@@ -1,0 +1,6 @@
+numpy<2
+torch==2.1.0
+torchvision==0.16.0
+torchtext==0.16.0
+spacy
+ru-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.5.0/ru_core_news_sm-3.5.0-py3-none-any.whl

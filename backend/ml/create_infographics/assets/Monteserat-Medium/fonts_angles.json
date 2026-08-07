@@ -1,0 +1,60 @@
+{
+    "fonts": [
+        {
+            "name": "Helvetica",
+            "type": "Sans-Serif",
+            "obtuse_angles": 12,
+            "sharp_angles": 8,
+            "ratio": 1.5
+        },
+        {
+            "name": "Times New Roman",
+            "type": "Serif",
+            "obtuse_angles": 6,
+            "sharp_angles": 14,
+            "ratio": 0.43
+        },
+        {
+            "name": "Rockwell",
+            "type": "Slab Serif",
+            "obtuse_angles": 18,
+            "sharp_angles": 4,
+            "ratio": 4.5
+        },
+        {
+            "name": "Baskerville",
+            "type": "Serif",
+            "obtuse_angles": 7,
+            "sharp_angles": 15,
+            "ratio": 0.47
+        },
+        {
+            "name": "Futura",
+            "type": "Geometric Sans-Serif",
+            "obtuse_angles": 10,
+            "sharp_angles": 10,
+            "ratio": 1.0
+        },
+        {
+            "name": "Garamond",
+            "type": "Serif",
+            "obtuse_angles": 5,
+            "sharp_angles": 16,
+            "ratio": 0.31
+        },
+        {
+            "name": "Courier New",
+            "type": "Monospace Slab",
+            "obtuse_angles": 20,
+            "sharp_angles": 2,
+            "ratio": 10.0
+        },
+        {
+            "name": "Brush Script MT",
+            "type": "Script",
+            "obtuse_angles": 3,
+            "sharp_angles": 19,
+            "ratio": 0.16
+        }
+    ]
+}

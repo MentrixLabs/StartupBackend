@@ -1,0 +1,41 @@
+fastapi==0.100.0
+requests
+joblib
+python-telegram-bot
+#account
+urllib3<2
+playwright
+aiohttp
+aiofile
+aiogram
+telegram
+alembic==1.13.3
+sqlalchemy[asyncio]>=2.0.0  # Минимальная версия с asyncio поддержкой
+asyncpg>=0.25.0  # Совместимая версия
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+greenlet
+#celery==5.4.0
+#redis==5.2.1
+loguru==0.7.3
+#flower==2.0.1
+psycopg2-binary
+selenium
+matplotlib
+reportlab
+openai
+pandas
+bs4
+dateparser
+
+#дальше для докера
+#numpy
+#tensorflow
+#tensorflow-macos
+#tensorflow_hub
+#tensorflow_text
+#torch==2.1.0
+#torchvision==0.16.0
+#torchtext==0.16.0
+#spacy
+#ru-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.5.0/ru_core_news_sm-3.5.0-py3-none-any.whl
