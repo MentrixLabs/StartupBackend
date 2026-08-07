@@ -16,5 +16,4 @@ python-jose
 python-multipart
 openai
 greenlet
-bcrypt==4.2.0
-passlib==1.7.4
+Werkzeug>=3.0.0
