@@ -1,18 +1,54 @@
-from sqlalchemy import Column, String, Integer, ForeignKey
-from sqlalchemy.dialects.postgresql import  ARRAY
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Date, Text
+from sqlalchemy.orm import relationship
 from db.db import Base
 
-class OzonItems(Base):
+class OzonItem(Base):
     __tablename__ = "ozon_items"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(ForeignKey('users.id'), nullable=False)
-    cardnames = Column(ARRAY(String))
-    urls_of_cards = Column(ARRAY(String))
-    categories = Column(ARRAY(String))
-    prices = Column(ARRAY(Integer, dimensions=2))
-    dates = Column(ARRAY(String, dimensions=2))
-    ratings = Column(ARRAY(Integer, dimensions=2))
-    reviews_counts = Column(ARRAY(Integer, dimensions=2))
-    descriptions = Column(ARRAY(String))
-    feedbacks = Column(ARRAY(String))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    cardname = Column(String)
+    description = Column(Text)
+    url = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Связи с другими таблицами (опционально, для удобства)
+    categories = relationship("OzonItemCategory", back_populates="item")
+    history = relationship("OzonItemHistory", back_populates="item")
+    feedbacks = relationship("OzonItemFeedback", back_populates="item")
+
+
+class OzonItemCategory(Base):
+    __tablename__ = "ozon_item_categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("ozon_items.id"), nullable=False)
+    category = Column(String, nullable=False)
+
+    item = relationship("OzonItem", back_populates="categories")
+
+
+class OzonItemHistory(Base):
+    __tablename__ = "ozon_item_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("ozon_items.id"), nullable=False)
+    record_date = Column(Date, nullable=False)
+    price = Column(Float)
+    rating = Column(Integer)
+    reviews_count = Column(Integer)
+    fbs_count = Column(Integer)
+
+    item = relationship("OzonItem", back_populates="history")
+
+
+class OzonItemFeedback(Base):
+    __tablename__ = "ozon_item_feedbacks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("ozon_items.id"), nullable=False)
+    feedback = Column(Text)
+    feedback_date = Column(Date)
+
+    item = relationship("OzonItem", back_populates="feedbacks")
