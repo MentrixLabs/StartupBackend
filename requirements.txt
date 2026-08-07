@@ -13,8 +13,8 @@ fastapi
 asyncpg
 pydantic[email]
 python-jose
-passlib
 python-multipart
 openai
 greenlet
-bcrypt
+bcrypt>=4.0.1
+passlib>=1.7.4
