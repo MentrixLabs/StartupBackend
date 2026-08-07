@@ -41,16 +41,16 @@ class BaseDAO:
 
     @classmethod
     async def add(cls, **data):
-        try:
-            query = insert(cls.model).values(**data).returning(cls.model.id)
-            async with async_session_maker() as session:
-                result = await session.execute(query)
+        async with async_session_maker() as session:
+            try:
+                instance = cls.model(**data)
+                session.add(instance)
                 await session.commit()
-                return result.mappings().first()
-
-        except Exception as error:
-            print(error)
-            return None
+                await session.refresh(instance)  # подгружаем все поля (id, created_at и т.д.)
+                return instance
+            except Exception as error:
+                print(error)
+                return None
 
     @classmethod
     async def delete(cls, **data):

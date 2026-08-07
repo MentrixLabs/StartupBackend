@@ -27,8 +27,8 @@ async def register(user_data: UserCreate):
             hashed_password=hashed,
         )
         # Принудительно получаем свежий объект с заполненными полями
-        user = await UserDAO.find_one_or_none(id=new_user.id)
-        return user
+        #user = await UserDAO.find_one_or_none(id=new_user.id)
+        return new_user #user
 
 @router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):

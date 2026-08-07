@@ -4,6 +4,8 @@ from jose import JWTError, jwt
 from config import settings
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if not hashed_password:   # если хеш пустой или None
+        return False
     return check_password_hash(hashed_password, plain_password)
 
 def get_password_hash(password: str) -> str:
