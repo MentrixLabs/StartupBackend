@@ -1,46 +1,57 @@
 import os
-from openai import AsyncOpenAI
+import json
+from datetime import datetime
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
+from sqlalchemy import select, desc
+from openai import AsyncOpenAI
+
 from db.db import async_session_maker
-from db.ozon.dao import OzonDAO
+from db.ozon.dao import OzonItemDAO, OzonItemCategoryDAO, OzonItemHistoryDAO
 from config import settings
 
-# Инициализация клиента DeepSeek (или OpenAI)
-# DeepSeek использует тот же SDK, но с другим base_url
-DS_API_Key = settings.DEEPSEEK_API_KEY
-
-client = AsyncOpenAI(
-    api_key=settings.DEEPSEEK_API_KEY,  # добавьте переменную в .env
-    base_url="https://api.deepseek.com/v1",  # или "https://api.deepseek.com"
-) if DS_API_Key else None
+# Инициализация клиента DeepSeek (если есть ключ)
+client = None
+if settings.DEEPSEEK_API_KEY:
+    client = AsyncOpenAI(
+        api_key=settings.DEEPSEEK_API_KEY,
+        base_url="https://api.deepseek.com/v1",
+    )
 
 async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
     """
     Генерирует SEO-оптимизацию для товара через DeepSeek API.
     Возвращает словарь с полями: title, description, keywords.
     """
-    # 1. Получаем данные товара из БД
+    # 1. Получаем данные товара
     async with async_session_maker() as session:
-        goods = await OzonDAO.find_one_or_none(id=goods_id, user_id=user_id)
+        goods = await OzonItemDAO.find_one_or_none(id=goods_id, user_id=user_id)
         if not goods:
             raise HTTPException(status_code=404, detail="Товар не найден или доступ запрещён")
 
-        # Извлекаем информацию о товаре (адаптируйте под вашу структуру)
-        # Предположим, что у нас есть поля: cardname, description, category, price и т.д.
         name = goods.cardname or "Товар"
         description = goods.description or ""
-        category = goods.categories[0] if goods.categories and len(goods.categories) > 0 else ""
-        price = goods.prices[0][0] if goods.prices and goods.prices[0] else None
 
-    # 2. Формируем промпт для DeepSeek
+        # 2. Получаем категории (берём первую, если есть)
+        categories = await OzonItemCategoryDAO.find_all(item_id=goods.id)
+        category = categories[0].category if categories else ""
+
+        # 3. Получаем последнюю цену из истории
+        history = await OzonItemHistoryDAO.find_all(item_id=goods.id)
+        price = None
+        if history:
+            # Сортируем по дате, берём последнюю
+            sorted_history = sorted(history, key=lambda h: h.record_date, reverse=True)
+            price = sorted_history[0].price
+
+    # 4. Формируем промпт для DeepSeek
     prompt = f"""
     Ты — профессиональный копирайтер для маркетплейсов. Напиши SEO-оптимизированный контент для товара.
 
     Название: {name}
     Категория: {category}
     Описание: {description}
-    Цена: {price} руб.
+    Цена: {price if price else "не указана"} руб.
 
     Создай:
     1. Заголовок (до 60 символов, привлекательный, с ключевыми словами).
@@ -55,23 +66,27 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
     }}
     """
 
-    # 3. Отправляем запрос к DeepSeek
+    # 5. Если клиент не инициализирован или запрос не удался, возвращаем заглушку
+    if not client:
+        return {
+            "title": name[:60],
+            "description": f"Очень крутой {name}"[:300],
+            "keywords": [f"Купить {name}", f"{name} цена", f"{category} {name}"] if category else [f"Купить {name}", f"{name} цена"]
+        }
+
     try:
         response = await client.chat.completions.create(
-            model="deepseek-chat",  # или "deepseek-coder" – используйте подходящую модель
+            model="deepseek-chat",
             messages=[
                 {"role": "system", "content": "Ты — помощник, генерирующий SEO-контент. Отвечай строго в формате JSON."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
             max_tokens=500,
-            response_format={"type": "json_object"}  # если поддерживается
+            response_format={"type": "json_object"}
         )
-        # Извлекаем JSON из ответа
         content = response.choices[0].message.content
-        import json
         result = json.loads(content)
-        # Валидация полей
         if not all(k in result for k in ("title", "description", "keywords")):
             raise ValueError("Ответ не содержит необходимых полей")
         return {
@@ -79,9 +94,10 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
             "description": result["description"][:300],
             "keywords": result["keywords"][:10]
         }
-    except:
+    except Exception as e:
+        # В случае ошибки возвращаем заглушку (можно также логировать)
         return {
-                    "title": name,
-                    "description": f"Очень крутой {name}",
-                    "keywords": [f"Ключевые слова для {name}"]
-                }
+            "title": name[:60],
+            "description": f"Отличный выбор – {name}"[:300],
+            "keywords": [f"Купить {name}", f"{name} цена", "лучшая цена", f"{category} {name}"] if category else [f"Купить {name}", f"{name} цена", "лучшая цена"]
+        }
