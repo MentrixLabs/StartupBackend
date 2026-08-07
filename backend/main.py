@@ -12,10 +12,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Настройка CORS (для фронтенда)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://mentrixlabs.github.io"],  # подставьте свои
+    allow_origins=[
+        "http://localhost:3000",  # для локальной разработки
+        "https://mentrixlabs.github.io",  # ваш GitHub Pages домен
+        # Если у вас будет кастомный домен, добавьте его сюда
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
