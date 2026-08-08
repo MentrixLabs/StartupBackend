@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from backend.core.dependencies import get_current_user
 from db.user.models import User
+from db.ozon.dao import SeoCompetitorDAO, SeoDataDAO
+from db.db import async_session_maker
 from backend.services.seo_service import generate_seo_for_goods
+from backend.schemas.goods import SeoHistoryResponse
 
 from typing import List
 
@@ -24,3 +27,38 @@ async def generate_seo(request: SeoRequest, current_user: User = Depends(get_cur
     if not result:
         raise HTTPException(status_code=404, detail="Goods not found")
     return result
+
+from typing import List
+
+@router.get("/history/{goods_id}", response_model=SeoHistoryResponse)
+async def get_seo_history(goods_id: int, current_user: User = Depends(get_current_user)):
+    async with async_session_maker() as session:
+        # Получаем сгенерированное SEO
+        seo_data = await SeoDataDAO.find_one_or_none(goods_id=goods_id)
+        # Получаем конкурентов
+        competitors = await SeoCompetitorDAO.find_all(goods_id=goods_id)
+        
+        if not seo_data:
+            # Если нет сгенерированного SEO, возвращаем пустую структуру
+            return {
+                "generated": None,
+                "summary": None,
+                "competitors": []
+            }
+        
+        return {
+            "generated": {
+                "title": seo_data.generated_title,
+                "description": seo_data.generated_description,
+                "keywords": seo_data.generated_keywords,
+            },
+            "summary": seo_data.summary,
+            "competitors": [
+                {
+                    "title": c.competitor_title,
+                    "description": c.competitor_description,
+                    "keywords": c.competitor_keywords,
+                    "url": c.competitor_url,
+                } for c in competitors
+            ],
+        }

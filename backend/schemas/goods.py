@@ -69,3 +69,20 @@ class FeedbackOut(FeedbackBase):
 
     class Config:
         from_attributes = True
+
+
+class SeoDataResponse(BaseModel):
+    title: str
+    description: str
+    keywords: List[str]
+
+class SeoCompetitorResponse(BaseModel):
+    title: str
+    description: str
+    keywords: List[str]
+    url: Optional[str] = None
+
+class SeoHistoryResponse(BaseModel):
+    generated: Optional[SeoDataResponse] = None
+    summary: Optional[str] = None
+    competitors: List[SeoCompetitorResponse] = []

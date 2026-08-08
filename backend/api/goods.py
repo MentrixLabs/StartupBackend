@@ -3,7 +3,7 @@ from typing import List
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from db.db import async_session_maker
-from db.ozon.dao import OzonItemDAO  # новый DAO для OzonItem
+from db.ozon.dao import OzonItemDAO
 from backend.schemas.goods import GoodsCreate, GoodsUpdate, GoodsOut
 from backend.core.dependencies import get_current_user
 from db.user.models import User
@@ -45,5 +45,20 @@ async def create_goods(goods: GoodsCreate, current_user: User = Depends(get_curr
             "description": new_item.description or "",
             "url": new_item.url,
             "created_at": new_item.created_at.isoformat() if new_item.created_at else "",
+            "updated_at": None,
+        }
+
+@router.get("/{goods_id}", response_model=GoodsOut)
+async def get_goods_by_id(goods_id: int, current_user: User = Depends(get_current_user)):
+    async with async_session_maker() as session:
+        item = await OzonItemDAO.find_one_or_none(id=goods_id, user_id=current_user.id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Товар не найден")
+        return {
+            "id": item.id,
+            "name": item.cardname or "",
+            "description": item.description or "",
+            "url": item.url,
+            "created_at": item.created_at.isoformat() if item.created_at else "",
             "updated_at": None,
         }

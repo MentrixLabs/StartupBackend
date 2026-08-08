@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Date, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Date, Text, ARRAY
 from sqlalchemy.orm import relationship
 from db.db import Base
 
@@ -52,3 +52,22 @@ class OzonItemFeedback(Base):
     feedback_date = Column(Date)
 
     item = relationship("OzonItem", back_populates="feedbacks")
+
+class SeoData(Base):
+    __tablename__ = "seo_data"
+
+    goods_id = Column(Integer, ForeignKey("ozon_items.id"), primary_key=True, nullable=False)
+    generated_title = Column(String(255), nullable=False)
+    generated_description = Column(Text, nullable=False)
+    generated_keywords = Column(ARRAY(String), nullable=False)
+    summary = Column(Text)
+
+class SeoCompetitor(Base):
+    __tablename__ = "seo_competitors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    goods_id = Column(Integer, ForeignKey("ozon_items.id"), nullable=False)
+    competitor_title = Column(String(255), nullable=False)
+    competitor_description = Column(Text, nullable=False)
+    competitor_keywords = Column(ARRAY(String), nullable=False)
+    competitor_url = Column(String(255), nullable=True)
