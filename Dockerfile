@@ -1,30 +1,18 @@
-# Базовый образ Python 3.11
-FROM python:3.11-slim
+# Используем официальный образ Playwright с Python
+FROM mcr.microsoft.com/playwright:python-v1.50.0
 
 WORKDIR /app
-
-# Установка системных зависимостей для Playwright
-RUN apt-get update && apt-get install -y \
-    libnss3 \
-    libnspr4 \
-    libatk-bridge2.0-0 \
-    libdrm2 \
-    libxkbcommon0 \
-    libgbm1 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    libasound2 \
-    libatspi2.0-0 \
-    libgtk-3-0 \
-    && rm -rf /var/lib/apt/lists/*
 
 # Копируем requirements.txt из корня проекта (если путь другой, измените)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+# Копируем код проекта
+COPY backend /app/backend
+COPY db /app/db
+COPY config.py /app/config.py
 
-# Устанавливаем браузеры Playwright (с зависимостями)
-RUN playwright install --with-deps chromium
+# Открываем порт
+EXPOSE 8000
 
 # Копируем весь код проекта
 COPY . .
