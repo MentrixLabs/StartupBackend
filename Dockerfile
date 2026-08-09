@@ -1,5 +1,5 @@
 # Используем официальный образ Playwright с Python
-FROM mcr.microsoft.com/playwright:python-v1.50.0
+FROM mcr.microsoft.com/playwright:python-1.50.0
 
 WORKDIR /app
 
