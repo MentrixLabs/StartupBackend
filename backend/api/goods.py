@@ -62,3 +62,14 @@ async def get_goods_by_id(goods_id: int, current_user: User = Depends(get_curren
             "created_at": item.created_at.isoformat() if item.created_at else "",
             "updated_at": None,
         }
+    
+@router.delete("/{goods_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_goods(goods_id: int, current_user: User = Depends(get_current_user)):
+    async with async_session_maker() as session:
+        # Проверяем, что товар существует и принадлежит пользователю
+        item = await OzonItemDAO.find_one_or_none(id=goods_id, user_id=current_user.id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Товар не найден")
+        # Удаляем товар
+        await OzonItemDAO.delete(id=goods_id)
+        return None  # 204 No Content

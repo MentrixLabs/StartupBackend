@@ -62,3 +62,36 @@ async def get_seo_history(goods_id: int, current_user: User = Depends(get_curren
                 } for c in competitors
             ],
         }
+
+@router.get("/{goods_id}/seo-history", response_model=SeoHistoryResponse)
+async def get_goods_seo_history(goods_id: int, current_user: User = Depends(get_current_user)):
+    async with async_session_maker() as session:
+        # Проверяем, что товар принадлежит пользователю
+        item = await OzonItemDAO.find_one_or_none(id=goods_id, user_id=current_user.id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Товар не найден")
+        
+        # Получаем SEO-данные
+        seo = await SeoDataDAO.find_one_or_none(goods_id=goods_id)
+        competitors = await SeoCompetitorDAO.find_all(goods_id=goods_id)
+        
+        if not seo:
+            # Если нет сгенерированного SEO, возвращаем пустую структуру
+            return SeoHistoryResponse(generated=None, summary=None, competitors=[])
+        
+        return SeoHistoryResponse(
+            generated={
+                "title": seo.generated_title,
+                "description": seo.generated_description,
+                "keywords": seo.generated_keywords,
+            },
+            summary=seo.summary,
+            competitors=[
+                {
+                    "title": c.competitor_title,
+                    "description": c.competitor_description,
+                    "keywords": c.competitor_keywords,
+                    "url": c.competitor_url,
+                } for c in competitors
+            ]
+        )

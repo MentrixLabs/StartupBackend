@@ -1,5 +1,6 @@
 from db.dao.base import BaseDAO
 from db.ozon.models import OzonItem, OzonItemCategory, OzonItemHistory, OzonItemFeedback, SeoData, SeoCompetitor
+from db.db import async_session_maker
 
 class OzonItemDAO(BaseDAO):
     model = OzonItem
@@ -18,3 +19,13 @@ class SeoDataDAO(BaseDAO):
 
 class SeoCompetitorDAO(BaseDAO):
     model = SeoCompetitor
+
+@classmethod
+async def delete(cls, **filter_by):
+    async with async_session_maker() as session:
+        instance = await cls.find_one_or_none(**filter_by)
+        if instance:
+            await session.delete(instance)
+            await session.commit()
+            return True
+        return False
