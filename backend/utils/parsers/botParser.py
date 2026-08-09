@@ -8,11 +8,11 @@ import shutil
 import dateparser
 from playwright.async_api import async_playwright, Page, ElementHandle
 
-from utils.parsers.browserLauncher import ChromeBrowserLauncher
-from utils.parsers.downloader import Downloader
-from utils.parsers.pageWalker import PageWalker
-from utils.parsers.parserConfig import ParserConfig
-from utils.parsers.parserResult import ParsingData
+from backend.utils.parsers.browserLauncher import ChromeBrowserLauncher
+from backend.utils.parsers.downloader import Downloader
+from backend.utils.parsers.pageWalker import PageWalker
+from backend.utils.parsers.parserConfig import ParserConfig
+from backend.utils.parsers.parserResult import ParsingData
 
 import logging
 

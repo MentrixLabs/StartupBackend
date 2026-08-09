@@ -2,7 +2,7 @@ import random
 
 from playwright.async_api import ViewportSize
 
-from utils.parsers.parserConfig import ParserConfig
+from backend.utils.parsers.parserConfig import ParserConfig
 
 
 class ChromeBrowserLauncher:

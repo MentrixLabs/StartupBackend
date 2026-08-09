@@ -1,6 +1,6 @@
 import requests
 
-from utils.parsers.parserConfig import ParserConfig
+from backend.utils.parsers.parserConfig import ParserConfig
 
 
 class Downloader:

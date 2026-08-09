@@ -19,3 +19,4 @@ greenlet
 Werkzeug>=3.0.0
 dateparser
 playwright
+asyncio
