@@ -30,6 +30,7 @@ class OzonParser:
 
         result = ParsingData.result(url, ParserConfig.CURRENT_TIMESTAMP)
         logger.info("3")
+        browser = None
 
         async with (async_playwright() as p):
             try:

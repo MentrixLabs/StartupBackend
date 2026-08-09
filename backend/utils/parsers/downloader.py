@@ -15,4 +15,4 @@ class Downloader:
                 if ParserConfig.DEBUG_PARSING:
                     print(f'Идёт запись файла: {path}')
         except Exception as e:
-            print(f"🔥 Ошибка загрузки {url}: {e}")
+            print(f"Ошибка загрузки {url}: {e}")
