@@ -5,7 +5,6 @@ meta:
     name: pip
     version: 3.11
 build:
-  dockerfile: Dockerfile
   requirementsPath: requirements.txt
   useCache: true
 run:
