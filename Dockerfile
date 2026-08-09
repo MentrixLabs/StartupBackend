@@ -1,3 +1,4 @@
+# Базовый образ Python 3.11
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -18,13 +19,18 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
+# Копируем requirements.txt из корня проекта (если путь другой, измените)
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-# Устанавливаем браузеры Playwright
+
+# Устанавливаем браузеры Playwright (с зависимостями)
 RUN playwright install --with-deps chromium
 
-# Копируем код
-COPY backend /app/backend
-COPY db /app/db
-COPY config.py /app/config.py
+# Копируем весь код проекта
+COPY . .
 
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Открываем порт (соответствует containerPort: 8000)
+EXPOSE 8000
+
+# Запускаем скрипт app.py
+CMD ["python", "app.py"]
