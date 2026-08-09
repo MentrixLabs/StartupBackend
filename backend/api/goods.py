@@ -7,8 +7,8 @@ from db.ozon.dao import OzonItemDAO, OzonItemHistoryDAO, OzonItemFeedbackDAO, Oz
 from backend.schemas.goods import GoodsCreate, GoodsUpdate, GoodsOut
 from backend.core.dependencies import get_current_user
 from db.user.models import User
-from utils.parsers.botParser import OzonParser
-from backend.service.parser import get_data_by_url
+from backend.utils.parsers.botParser import OzonParser
+from backend.services.parser import get_data_by_url
 
 router = APIRouter()
 

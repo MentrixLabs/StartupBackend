@@ -1,4 +1,4 @@
-from utils.parsers.botParser import OzonParser
+from backend.utils.parsers.botParser import OzonParser
 
 
 async def get_data_by_url(url: str):
