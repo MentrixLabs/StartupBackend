@@ -2,27 +2,6 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
-# ----- Основной товар (таблица ozon_items) -----
-class GoodsBase(BaseModel):
-    name: str                     # cardname
-    description: Optional[str] = None
-    url: str                      # обязательно
-
-class GoodsCreate(GoodsBase):
-    pass
-
-class GoodsUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    url: Optional[str] = None
-
-class GoodsOut(GoodsBase):
-    id: int
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
 # ----- Категории (таблица ozon_item_categories) -----
 class CategoryBase(BaseModel):
     category: str
@@ -86,3 +65,39 @@ class SeoHistoryResponse(BaseModel):
     generated: Optional[SeoDataResponse] = None
     summary: Optional[str] = None
     competitors: List[SeoCompetitorResponse] = []
+
+class GoodsBase(BaseModel):
+    name: sыtr
+    description: Optional[str] = None
+    url: str
+
+class GoodsCreate(GoodsBase):
+    pass
+
+class GoodsUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    url: Optional[str] = None
+
+class GoodsOut(GoodsBase):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    # Все поля из парсера
+    product_id: Optional[str] = None
+    provider: Optional[str] = None
+    brand: Optional[str] = None
+    original_price: Optional[int] = None
+    currency: Optional[str] = None
+    rating: Optional[float] = None
+    reviews_count: Optional[int] = None
+    main_imgs: Optional[List[str]] = None
+    desc_imgs: Optional[List[str]] = None
+
+    # Поля из связанных таблиц
+    category: Optional[str] = None
+    price: Optional[float] = None
+
+    class Config:
+        from_attributes = True
