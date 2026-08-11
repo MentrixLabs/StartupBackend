@@ -185,10 +185,10 @@ class OzonParser:
         return state_json
 
     async def __load_all_reviews(self, page: Page, reviews_count: int):
+        limit = min(reviews_count, 5)
         await PageWalker.scroll_to_element(page, '[data-widget="webAnchor"]')
         await page.wait_for_selector('[data-widget="webListPhotos"]')
-        await PageWalker.scroll_to_element(page, '[data-widget="webListPhotos"]')
-        await PageWalker.scroll_to_element_continuously(page, '[data-widget="webListReviews"]', reviews_count)
+        await PageWalker.scroll_to_element_continuously(page, '[data-widget="webListReviews"]', limit)
         await self.__expand_long_reviews(page)
         await self.__expand_review_comments(page)
 
