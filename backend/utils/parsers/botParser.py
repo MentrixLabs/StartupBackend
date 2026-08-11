@@ -60,8 +60,11 @@ class OzonParser:
                 print(f"✅ Парсинг завершен. Данные сохранены в {output_path}")
 
             except Exception as e:
-                print(f"🔥 Произошла ошибка: {e}")
-
+                print(f"🔥 Ошибка парсинга: {e}")
+                # Логируем стек
+                import traceback
+                traceback.print_exc()
+                raise
             finally:
                 await ChromeBrowserLauncher.shutdown(browser)
 
@@ -69,7 +72,9 @@ class OzonParser:
 
     async def __run_in_browser_context(self, context, output_path):
         logger.info("8")
-
+        await page.set_extra_http_headers({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        })
         page = await self.__user_interaction(ParserConfig.BASE_OZON_URL, context)
         logger.info("9")
 

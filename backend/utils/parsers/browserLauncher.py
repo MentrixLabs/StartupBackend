@@ -13,6 +13,8 @@ class ChromeBrowserLauncher:
             headless=not debug,
             args=[
                 "--disable-blink-features=AutomationControlled",
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
                 "--start-maximized",
                 "--disable-web-security"
             ],
