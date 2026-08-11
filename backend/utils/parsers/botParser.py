@@ -216,20 +216,11 @@ class OzonParser:
         try:
             img_links = await PageWalker.extract_image_urls(page, '[data-widget="webGallery"] img[loading]')
             img_links = self.__filter_and_transform_img_src(img_links)
-
-            for idx, src in enumerate(img_links, start=1):
-                ext = os.path.splitext(src)[1]
-                ext = re.sub('\.jpeg$', '.jpg', ext)
-                filename = f'main_img{idx}{ext}'
-                path = os.path.join(img_dir, filename)
-                await Downloader.download_file(src, path)
-                main_imgs.append(filename)
-
-            return main_imgs
-
+            # Возвращаем сами URL, не скачивая
+            return img_links
         except Exception as e:
             print(f"🔥 Ошибка при парсинге изображений: {e}")
-            return None
+            return []
 
     async def __parse_reviews(self, page, desc_img_dir):
         review_data = {
@@ -262,18 +253,8 @@ class OzonParser:
 
                 desc_img_links = await PageWalker.extract_image_urls(review_element, 'img[loading]')
                 desc_img_links = self.__filter_and_transform_img_src(desc_img_links)
-                review_images = []
-                for src in desc_img_links:
-                    placeholder = f'img{desc_img_counter}'
-                    review_images.append(placeholder)
-                    ext = os.path.splitext(src)[1]
-                    ext = re.sub('\.jpeg$', '.jpg', ext)
-                    filename = f'desc_img{desc_img_counter}{ext}'
-                    await Downloader.download_file(src, os.path.join(desc_img_dir, filename))
-                    desc_imgs.append(filename)
-                    desc_img_counter += 1
 
-                review['review_images'] = review_images
+                review['review_images'] = desc_img_links
                 reviews[review_uuid] = review
 
             review_data['reviews'] = reviews
