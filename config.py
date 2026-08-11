@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     OZON_API_KEY: str = ""
     CLIENT_ID: int = 0
     DEEPSEEK_API_KEY: str = ""
+    YANDEX_CLOUD_FOLDER: str = ""
+    YANDEX_CLOUD_API_KEY: str = ""
+    YANDEX_CLOUD_MODEL: str = ""
+    BASE_AI_URL: str  = ""
 
     @property
     def DATABASE_URL(self) -> str:

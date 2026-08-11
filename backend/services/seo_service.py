@@ -6,17 +6,17 @@ from fastapi import HTTPException
 from sqlalchemy import select, desc
 from openai import AsyncOpenAI
 
+from backend.utils.deepseekApi import DeepSeekModel
+
 from db.db import async_session_maker
 from db.ozon.dao import OzonItemDAO, OzonItemCategoryDAO, OzonItemHistoryDAO
 from config import settings
 
-# Инициализация клиента DeepSeek (если есть ключ)
-client = None
-if settings.DEEPSEEK_API_KEY:
-    client = AsyncOpenAI(
-        api_key=settings.DEEPSEEK_API_KEY,
-        base_url="https://api.deepseek.com/v1",
-    )
+generation_model = DeepSeekModel(api_key = settings.YANDEX_CLOUD_API_KEY,
+                                 base_url = settings.BASE_AI_URL,
+                                 model = settings.YANDEX_CLOUD_FOLDER/settings.YANDEX_CLOUD_MODEL,
+                                 project = settings.YANDEX_CLOUD_FOLDER,
+                                 max_tokens = 1500)    
 
 async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
     """
@@ -44,58 +44,26 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
             sorted_history = sorted(history, key=lambda h: h.record_date, reverse=True)
             price = sorted_history[0].price
 
-    # 4. Формируем промпт для DeepSeek
-    prompt = f"""
-    Ты — профессиональный копирайтер для маркетплейсов. Напиши SEO-оптимизированный контент для товара.
-
-    Название: {name}
-    Категория: {category}
-    Описание: {description}
-    Цена: {price if price else "не указана"} руб.
-
-    Создай:
-    1. Заголовок (до 60 символов, привлекательный, с ключевыми словами).
-    2. Описание (до 300 символов, продающее, с LSI-фразами).
-    3. Ключевые слова (список из 5–10 слов и фраз, релевантных для поиска).
-
-    Ответ дай в формате JSON:
-    {{
-        "title": "...",
-        "description": "...",
-        "keywords": ["слово1", "слово2", ...]
-    }}
-    """
-
-    # 5. Если клиент не инициализирован или запрос не удался, возвращаем заглушку
-    if not client:
-        return {
-            "title": name[:60],
-            "description": f"Очень крутой {name}"[:300],
-            "keywords": [f"Купить {name}", f"{name} цена", f"{category} {name}"] if category else [f"Купить {name}", f"{name} цена"]
-        }
-
     try:
-        response = await client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": "Ты — помощник, генерирующий SEO-контент. Отвечай строго в формате JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=500,
-            response_format={"type": "json_object"}
-        )
-        content = response.choices[0].message.content
+        generation_model = DeepSeekModel(api_key = settings.YANDEX_CLOUD_API_KEY,
+                                 base_url = settings.BASE_AI_URL,
+                                 model = settings.YANDEX_CLOUD_FOLDER/settings.YANDEX_CLOUD_MODEL,
+                                 project = settings.YANDEX_CLOUD_FOLDER,
+                                 max_tokens = 1500)  
+        content = generation_model.getSEO(name, category, description, price)
         result = json.loads(content)
+
         if not all(k in result for k in ("title", "description", "keywords")):
             raise ValueError("Ответ не содержит необходимых полей")
+        
         return {
             "title": result["title"][:60],
             "description": result["description"][:300],
             "keywords": result["keywords"][:10]
         }
     except Exception as e:
-        # В случае ошибки возвращаем заглушку (можно также логировать)
+        print(f"Ошибка: {e}")
+        
         return {
             "title": name[:60],
             "description": f"Отличный выбор – {name}"[:300],
