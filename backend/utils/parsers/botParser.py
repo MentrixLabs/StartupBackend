@@ -9,7 +9,7 @@ import dateparser
 from playwright.async_api import async_playwright, Page, ElementHandle
 
 from backend.utils.parsers.browserLauncher import ChromeBrowserLauncher
-from backend.utils.parsers.downloader import Downloader
+# from backend.utils.parsers.downloader import Downloader  # УДАЛЁН, Т.К. НЕ ИСПОЛЬЗУЕТСЯ
 from backend.utils.parsers.pageWalker import PageWalker
 from backend.utils.parsers.parserConfig import ParserConfig
 from backend.utils.parsers.parserResult import ParsingData
@@ -61,7 +61,6 @@ class OzonParser:
 
             except Exception as e:
                 print(f"🔥 Ошибка парсинга: {e}")
-                # Логируем стек
                 import traceback
                 traceback.print_exc()
                 raise
@@ -102,7 +101,7 @@ class OzonParser:
         # Цена товара
         product_price = await self.__load_from_state(page, 'webPrice')
         product_original_price = product_price['originalPrice']
-        product_data['currency'] = re.split('\s+', product_original_price)[-1]
+        product_data['currency'] = re.split(r'\s+', product_original_price)[-1]
         product_data['original_price'] = int(self.__digits_only(product_original_price))
         product_data['price'] = int(self.__digits_only(product_price['price']))
         logger.info("10")
@@ -111,14 +110,14 @@ class OzonParser:
         await self.__expand_long_description(page)
         product_descriptions = await page.locator('[data-widget="webDescription"]').all_inner_texts()
         product_description = '\n\n'.join(product_descriptions)
-        product_description = re.sub('\s+', ' ', product_description)
+        product_description = re.sub(r'\s+', ' ', product_description)
         product_data['description'] = product_description
         logger.info("11")
 
-        # Изображения продукта
+        # Изображения продукта (без скачивания)
         img_dir = os.path.join(output_path, 'main_imgs')
-        os.makedirs(img_dir, exist_ok=True)
-        main_imgs = await self.__parse_images(page, img_dir)
+        os.makedirs(img_dir, exist_ok=True)   # папка всё ещё нужна для JSON, но можно убрать, если не нужна
+        main_imgs = await self.__parse_images(page, img_dir)   # возвращает URL
         product_data['main_imgs'] = main_imgs
 
         # Рейтинг и количество отзывов
@@ -131,17 +130,15 @@ class OzonParser:
         if product_reviews_count > 0:
             single_product_score = await self.__load_from_state(page, 'webSingleProductScore')
             product_score = single_product_score['text']
-            product_rating = re.split('\s', product_score)[0]
+            product_rating = re.split(r'\s', product_score)[0]
             product_data['rating'] = float(product_rating) if product_rating is not None else None
 
-            # Отзывы
-            desc_img_dir = os.path.join(output_path, 'desc_imgs')
-            os.makedirs(desc_img_dir, exist_ok=True)
+            # Отзывы (без скачивания)
             await self.__load_all_reviews(page, int(product_reviews_count))
 
-            review_data = await self.__parse_reviews(page, desc_img_dir)
+            review_data = await self.__parse_reviews(page)   # больше не передаём desc_img_dir
             product_data['reviews'] = review_data['reviews']
-            product_data['desc_imgs'] = review_data['desc_imgs']
+            product_data['desc_imgs'] = review_data['desc_imgs']   # теперь список URL
         logger.info("13")
 
         return product_data
@@ -179,7 +176,6 @@ class OzonParser:
         except Exception as e:
             print(f'Страница защиты возраста не пройдена: {e}')
 
-
         return page
 
     async def __load_from_state(self, page, state_name):
@@ -190,7 +186,7 @@ class OzonParser:
 
     async def __load_all_reviews(self, page: Page, reviews_count: int):
         await PageWalker.scroll_to_element(page, '[data-widget="webAnchor"]')
-        await page.wait_for_selector ('[data-widget="webListPhotos"]')
+        await page.wait_for_selector('[data-widget="webListPhotos"]')
         await PageWalker.scroll_to_element(page, '[data-widget="webListPhotos"]')
         await PageWalker.scroll_to_element_continuously(page, '[data-widget="webListReviews"]', reviews_count)
         await self.__expand_long_reviews(page)
@@ -208,9 +204,10 @@ class OzonParser:
 
     async def __expand_review_comments(self, page):
         tag = 'button'
-        match_text = "комментари"  # совпадает с (n комментариев)
+        match_text = "комментари"
         await PageWalker.click_element(page, tag, match_text)
 
+    # ИЗМЕНЕНО: возвращает список URL без скачивания
     async def __parse_images(self, page, img_dir):
         main_imgs = []
         try:
@@ -222,7 +219,8 @@ class OzonParser:
             print(f"🔥 Ошибка при парсинге изображений: {e}")
             return []
 
-    async def __parse_reviews(self, page, desc_img_dir):
+    # ИЗМЕНЕНО: теперь не принимает desc_img_dir, не скачивает, возвращает URL
+    async def __parse_reviews(self, page):
         review_data = {
             "reviews": {},
             "desc_imgs": []
@@ -231,34 +229,38 @@ class OzonParser:
         try:
             review_elements: list[ElementHandle] = await page.query_selector_all('[data-review-uuid]')
             reviews = {}
-            desc_imgs = []
-            desc_img_counter = 1
+            desc_imgs = []  # собираем все URL изображений из отзывов
+
             for review_element in review_elements:
                 review_uuid = await review_element.get_attribute("data-review-uuid")
                 review = ParsingData.product_review()
 
-                review_text = re.sub("\s+", " ", await review_element.inner_text())
+                review_text = re.sub(r"\s+", " ", await review_element.inner_text())
                 review['review_text'] = review_text
                 await self.__parse_review_text(review)
 
                 all_svgs = await review_element.query_selector_all('svg')
-
                 review_rating = 0
                 for svg_element in all_svgs:
                     style_attribute = await svg_element.get_attribute('style')
                     if style_attribute is not None and style_attribute.startswith('color: rgb(255, 165, 0)'):
                         review_rating += 1
-
                 review['review_rating'] = review_rating
 
+                # Получаем URL изображений из отзыва (без скачивания)
                 desc_img_links = await PageWalker.extract_image_urls(review_element, 'img[loading]')
                 desc_img_links = self.__filter_and_transform_img_src(desc_img_links)
 
+                # Сохраняем URL в отзыв
                 review['review_images'] = desc_img_links
+
+                # Добавляем URL в общий список
+                desc_imgs.extend(desc_img_links)
+
                 reviews[review_uuid] = review
 
             review_data['reviews'] = reviews
-            review_data['desc_imgs'] = desc_imgs
+            review_data['desc_imgs'] = desc_imgs   # теперь список URL
             return review_data
 
         except Exception as e:
@@ -302,9 +304,8 @@ class OzonParser:
         res_image_sources = []
         for imgsrc in image_sources:
             if not any(substring in imgsrc for substring in substrings_filter):
-                imgsrc = re.sub('/wc[15]00?/', '/wc1000/', imgsrc)
+                imgsrc = re.sub(r'/wc[15]00?/', '/wc1000/', imgsrc)
                 res_image_sources.append(imgsrc)
-
         return res_image_sources
 
     def __get_product_id_from_url(self, url):
@@ -314,7 +315,6 @@ class OzonParser:
             product_id = product_id.split('?')[0]
             product_id = product_id.split('-')[-1]
             return product_id
-
         except Exception as e:
             print(f"Ошибка при получении product_id из url: {e}")
             return None
@@ -328,14 +328,11 @@ class OzonParser:
 
 
 if __name__ == "__main__":
-
     print(f'🖙 Введите ссылку продукта Ozon:')
     product_url = str(input())
-
     url_prefix = 'https://'
     if not product_url.startswith(url_prefix):
         print(f'Ссылка продукта должна начинаться с {url_prefix}')
         exit(1)
-
     print('Начался процесс парсинга...')
     res = asyncio.run(OzonParser().parse(product_url))
