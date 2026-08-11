@@ -18,7 +18,7 @@ EXPOSE 8000
 COPY . .
 
 # Открываем порт (соответствует containerPort: 8000)
-EXPOSE 8000
+EXPOSE 80
 
 # Запускаем скрипт app.py
 CMD ["python", "app.py"]
