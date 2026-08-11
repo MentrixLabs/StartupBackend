@@ -73,10 +73,6 @@ class OzonParser:
     async def __run_in_browser_context(self, context, output_path):
         logger.info("8")
         page = await self.__user_interaction(ParserConfig.BASE_OZON_URL, context)
-
-        await page.set_extra_http_headers({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        })
         logger.info("9")
 
         product_data = ParsingData.product_data()
