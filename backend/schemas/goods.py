@@ -54,6 +54,9 @@ class SeoDataResponse(BaseModel):
     title: str
     description: str
     keywords: List[str]
+    advertising_spend_ratio: Optional[List[float]] = None
+    leads: Optional[List[float]] = None
+    CTR: Optional[List[float]] = None
 
 class SeoCompetitorResponse(BaseModel):
     title: str

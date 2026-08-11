@@ -17,6 +17,18 @@ class OzonItemFeedbackDAO(BaseDAO):
 class SeoDataDAO(BaseDAO):
     model = SeoData
 
+    # Если `update` ожидает `id`, переопределите:
+    @classmethod
+    async def update(cls, goods_id: int, **data):
+        async with async_session_maker() as session:
+            instance = await cls.find_one_or_none(goods_id=goods_id)
+            if instance:
+                for key, value in data.items():
+                    setattr(instance, key, value)
+                await session.commit()
+                return instance
+            return None
+
 class SeoCompetitorDAO(BaseDAO):
     model = SeoCompetitor
 

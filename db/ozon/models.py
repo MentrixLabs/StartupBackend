@@ -28,6 +28,7 @@ class OzonItem(Base):
     categories = relationship("OzonItemCategory", back_populates="item")
     history = relationship("OzonItemHistory", back_populates="item")
     feedbacks = relationship("OzonItemFeedback", back_populates="item")
+    seo_data = relationship("SeoData", back_populates="item", uselist=False)
 
 
 class OzonItemCategory(Base):
@@ -68,10 +69,17 @@ class SeoData(Base):
     __tablename__ = "seo_data"
 
     goods_id = Column(Integer, ForeignKey("ozon_items.id"), primary_key=True, nullable=False)
-    generated_title = Column(String(255), nullable=False)
-    generated_description = Column(Text, nullable=False)
-    generated_keywords = Column(ARRAY(String), nullable=False)
+    generated_title = Column(String(255))
+    generated_description = Column(Text)
+    generated_keywords = Column(ARRAY(String))
     summary = Column(Text)
+    # Новые поля
+    advertising_spend_ratio = Column(ARRAY(Float))  # массив [old, new]
+    leads = Column(ARRAY(Float))                   # массив [old, new]
+    ctr = Column(ARRAY(Float))                     # массив [old, new]
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    item = relationship("OzonItem", back_populates="seo_data")
 
 class SeoCompetitor(Base):
     __tablename__ = "seo_competitors"
