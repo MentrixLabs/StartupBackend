@@ -8,9 +8,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем код проекта
-COPY backend /app/backend
-COPY db /app/db
-COPY config.py /app/config.py
+COPY . .
 
 # Открываем порт 80 (как ожидает Amvera по умолчанию)
 EXPOSE 80
