@@ -13,7 +13,18 @@ class OzonItem(Base):
     url = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Связи с другими таблицами (опционально, для удобства)
+    # Новые поля из парсера
+    product_id = Column(String(50))
+    provider = Column(String(255))
+    brand = Column(String(255))
+    original_price = Column(Integer)
+    currency = Column(String(10))
+    rating = Column(Float)
+    reviews_count = Column(Integer)
+    main_imgs = Column(ARRAY(String))   # массив URL
+    desc_imgs = Column(ARRAY(String))
+
+    # Связи (остаются без изменений)
     categories = relationship("OzonItemCategory", back_populates="item")
     history = relationship("OzonItemHistory", back_populates="item")
     feedbacks = relationship("OzonItemFeedback", back_populates="item")
