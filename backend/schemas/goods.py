@@ -67,7 +67,7 @@ class SeoHistoryResponse(BaseModel):
     competitors: List[SeoCompetitorResponse] = []
 
 class GoodsBase(BaseModel):
-    name: sыtr
+    name: str
     description: Optional[str] = None
     url: str
 
