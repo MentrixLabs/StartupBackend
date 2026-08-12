@@ -6,8 +6,26 @@ from db.user.dao import UserDAO
 from backend.schemas.user import UserCreate, UserOut, Token
 from backend.core.security import verify_password, get_password_hash, create_access_token
 from backend.core.dependencies import get_current_user
+from pydantic import BaseModel
 
 router = APIRouter()
+
+class TgIdUpdate(BaseModel):
+    tg_id: int
+
+@router.put("/update_tg_id")
+async def update_tg_id(
+    data: TgIdUpdate,
+    current_user = Depends(get_current_user),
+    session: AsyncSession = Depends(async_session_maker)
+):
+    # Проверяем, не занят ли tg_id другим пользователем
+    existing = await UserDAO.find_one_or_none(tg_id=data.tg_id)
+    if existing and existing.id != current_user.id:
+        raise HTTPException(status_code=400, detail="Этот Telegram ID уже привязан к другому аккаунту")
+    current_user.tg_id = data.tg_id
+    await session.commit()
+    return {"message": "tg_id updated"}
 
 @router.post("/register", response_model=UserOut)
 async def register(user_data: UserCreate):
