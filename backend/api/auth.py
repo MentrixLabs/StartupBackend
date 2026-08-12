@@ -19,7 +19,7 @@ async def update_tg_id(
     current_user = Depends(get_current_user),
     session: AsyncSession = Depends(async_session_maker)
 ):
-    # Проверяем, не занят ли tg_id другим пользователем
+    # Проверка, не занят ли tg_id другим пользователем
     existing = await UserDAO.find_one_or_none(tg_id=data.tg_id)
     if existing and existing.id != current_user.id:
         raise HTTPException(status_code=400, detail="Этот Telegram ID уже привязан к другому аккаунту")
