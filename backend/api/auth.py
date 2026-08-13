@@ -29,8 +29,10 @@ async def update_tg_id(
     existing = await UserDAO.find_one_or_none(tg_id=data.tg_id)
     if existing and existing.id != current_user.id:
         raise HTTPException(status_code=400, detail="Этот Telegram ID уже привязан к другому аккаунту")
-    session.add(current_user)
-    current_user.tg_id = data.tg_id
+    
+    # Принудительно загружаем пользователя в текущую сессию
+    user = await session.merge(current_user)   # ← вместо session.add
+    user.tg_id = data.tg_id
     await session.commit()
     return {"message": "tg_id updated"}
 
