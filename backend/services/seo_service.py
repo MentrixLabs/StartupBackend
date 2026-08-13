@@ -45,7 +45,7 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
         #content = generation_model.getSEObyYandex(name, category, description, price)
         result = json.loads(content)
 
-        required = ("title", "description", "keywords", "advertising_spend_ratio", "leads", "CTR")
+        required = ("title", "description", "keywords", "summary", "advertising_spend_ratio", "leads", "CTR")
         if not all(k in result for k in required):
             raise ValueError("Ответ не содержит необходимых полей")
 
@@ -56,10 +56,10 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
                 "generated_title": result["title"],
                 "generated_description": result["description"],
                 "generated_keywords": result["keywords"],
-                "summary": result.get("summary", ""),
-                "advertising_spend_ratio": result["advertising_spend_ratio"],
-                "leads": result["leads"],
-                "ctr": result["CTR"],
+                "summary": result["summary"],
+                "advertising_spend_ratio": map(int, result["advertising_spend_ratio"]),
+                "leads": map(int, result["leads"]),
+                "ctr": map(int, result["CTR"]),
             }
             if existing:
                 # обновляем

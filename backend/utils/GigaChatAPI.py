@@ -35,9 +35,10 @@ class GigaChatModel:
             {{
                 "title": "...",
                 "description": "...",
-                "keywords": ["слово1", "слово2", ...]
-                "advertising_spend_ratio": ["old", "new"]
-                "leads": ["old", "new"]
+                "keywords": ["слово1", "слово2", ...],
+                "summary": [...],
+                "advertising_spend_ratio": ["old", "new"],
+                "leads": ["old", "new"],
                 "CTR": ["old", "new"]
             }}
             """
