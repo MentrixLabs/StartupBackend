@@ -29,7 +29,7 @@ class DeepSeekModel:
                 "title": "...",
                 "description": "...",
                 "keywords": ["слово1", "слово2", ...]
-                "advertising spend ratio": [old, new]
+                "advertising_spend_ratio": [old, new]
                 "leads": [old, new]
                 "CTR": [old, new]
             }}
@@ -44,7 +44,7 @@ class DeepSeekModel:
             ],
             stream=False,
             temperature=0.7,
-            max_output_tokens=self.max_tokens
+            max_tokens=self.max_tokens
         )
 
         return response.choices[0].message.content
@@ -62,7 +62,7 @@ class DeepSeekModel:
             ],
             stream=False,
             temperature=0.7,
-            max_output_tokens=self.max_tokens
+            max_tokens=self.max_tokens
         )
 
         return response.choices[0].message.content
