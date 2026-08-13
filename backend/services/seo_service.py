@@ -12,7 +12,7 @@ from config import settings
 generation_model = DeepSeekModel(
     api_key=settings.YANDEX_CLOUD_API_KEY,
     base_url=settings.BASE_AI_URL,
-    model=f"{settings.YANDEX_CLOUD_FOLDER}/{settings.YANDEX_CLOUD_MODEL}",
+    model=f"gpt://{settings.YANDEX_CLOUD_FOLDER}/{settings.YANDEX_CLOUD_MODEL}",
     project=settings.YANDEX_CLOUD_FOLDER,
     max_tokens=1500
 )
@@ -38,10 +38,10 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
 
     # 2. Генерируем SEO
     try:
-        content = generation_model.getSEO(name, category, description, price)
+        content = generation_model.getSEObyYandex(name, category, description, price)
         result = json.loads(content)
 
-        required = ("title", "description", "keywords", "advertising spend ratio", "leads", "CTR")
+        required = ("title", "description", "keywords", "advertising_spend_ratio", "leads", "CTR")
         if not all(k in result for k in required):
             raise ValueError("Ответ не содержит необходимых полей")
 
@@ -53,7 +53,7 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
                 "generated_description": result["description"],
                 "generated_keywords": result["keywords"],
                 "summary": result.get("summary", ""),
-                "advertising_spend_ratio": result["advertising spend ratio"],
+                "advertising_spend_ratio": result["advertising_spend_ratio"],
                 "leads": result["leads"],
                 "ctr": result["CTR"],
             }
@@ -68,7 +68,7 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
             "title": result["title"],
             "description": result["description"],
             "keywords": result["keywords"],
-            "advertising spend ratio": result["advertising spend ratio"],
+            "advertising_spend_ratio": result["advertising_spend_ratio"],
             "leads": result["leads"],
             "CTR": result["CTR"],
         }
@@ -79,7 +79,7 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
             "title": name[:60],
             "description": f"Отличный выбор – {name}"[:300],
             "keywords": [f"Купить {name}", f"{name} цена", "лучшая цена", f"{category} {name}"] if category else [f"Купить {name}", f"{name} цена", "лучшая цена"],
-            "advertising spend ratio": [0, 0],
+            "advertising_spend_ratio": [0, 0],
             "leads": [0, 0],
             "CTR": [0, 0],
         }
