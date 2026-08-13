@@ -57,20 +57,24 @@ async def register(user_data: UserCreate):
         #user = await UserDAO.find_one_or_none(id=new_user.id)
         return new_user #user
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
+
 @router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    print(("1. Получен запрос /login"))
+    logging.info(("1. Получен запрос /login"))
     async with async_session_maker() as session:
-        print("2. Сессия создана")
+        logging.info("2. Сессия создана")
         user = await UserDAO.find_one_or_none(username=form_data.username)
-        print("3. Запрос к БД выполнен")
+        logging.info("3. Запрос к БД выполнен")
         if not user:
             raise HTTPException(status_code=400, detail="Incorrect username or password")
         if not verify_password(form_data.password, user.hashed_password):
             raise HTTPException(status_code=400, detail="Incorrect username or password")
-        print("4. user получен")
+        logging.info("4. user получен")
         access_token = create_access_token(data={"sub": str(user.id)})
-        print("5. access_token получен")
+        logging.info("5. access_token получен")
         return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserOut)
