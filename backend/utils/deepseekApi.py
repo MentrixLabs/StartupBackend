@@ -35,12 +35,14 @@ class DeepSeekModel:
                 """
             instructions="You are a professional SEO manager, you write the most selling texts with the most relevant keywords to the product. Answer in Russian.",
                     
-            response = self.client.chat.completions.create(
+            response = self.client.responses.create(
                 model=self.model,
-                messages=[
-                    {"role": "system", "content": instructions},
-                    {"role": "user", "content": prompt}
-                ],
+                input=prompt,
+                instructions = instructions,
+                #messages=[
+                #    {"role": "system", "content": instructions},
+                #    {"role": "user", "content": prompt}
+                #],
                 temperature=0.7,
                 max_tokens=self.max_tokens
             )
