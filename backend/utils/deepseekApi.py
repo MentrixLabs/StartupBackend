@@ -45,7 +45,7 @@ class DeepSeekModel:
                 max_tokens=self.max_tokens
             )
     
-            return response.output_text
+            return response.choices[0].message.content
 
     def getSEObyDeepSeek(self, product_name, category, description, price) -> str:
 
@@ -117,7 +117,7 @@ class DeepSeekModel:
                 temperature=0.7,
                 max_tokens=self.max_tokens
             )
-            return response.output_text
+            return response.choices[0].message.content
 
 
     def getIGbyDeepSeek(self, product) -> str:
@@ -149,4 +149,4 @@ class DeepSeekModel:
             temperature=0.7,
             max_tokens=self.max_tokens
         )
-        return response.output_text
+        return response.choices[0].message.content
