@@ -44,7 +44,7 @@ class DeepSeekModel:
                 #    {"role": "user", "content": prompt}
                 #],
                 temperature=0.7,
-                max_tokens=self.max_tokens
+                max_output_tokens=self.max_tokens
             )
     
             return response.output_text
@@ -152,3 +152,16 @@ class DeepSeekModel:
             max_tokens=self.max_tokens
         )
         return response.choices[0].message.content
+
+if __name__ == "__main__":
+    from config import settings
+    import json
+    generation_model = DeepSeekModel(
+        api_key=settings.YANDEX_CLOUD_API_KEY,
+        base_url=settings.BASE_AI_URL,
+        model=f"gpt://{settings.YANDEX_CLOUD_FOLDER}/{settings.YANDEX_CLOUD_MODEL}",
+        project=settings.YANDEX_CLOUD_FOLDER,
+        max_tokens=1500
+    )
+    content = generation_model.getSEObyYandex("name", "category", "description", "price")
+    result = json.loads(content)
