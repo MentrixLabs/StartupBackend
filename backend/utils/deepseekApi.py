@@ -47,7 +47,7 @@ class DeepSeekModel:
                 max_tokens=self.max_tokens
             )
     
-            return response.choices[0].message.content
+            return response.output_text
 
     def getSEObyDeepSeek(self, product_name, category, description, price) -> str:
 
