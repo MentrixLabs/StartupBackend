@@ -12,11 +12,11 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     OZON_API_KEY: str = ""
     CLIENT_ID: int = 0
-    DEEPSEEK_API_KEY: str = ""
     YANDEX_CLOUD_FOLDER: str = ""
     YANDEX_CLOUD_API_KEY: str = ""
     YANDEX_CLOUD_MODEL: str = ""
     BASE_AI_URL: str  = ""
+    DEEPSEEK_API_KEY: str = YANDEX_CLOUD_API_KEY
 
     @property
     def DATABASE_URL(self) -> str:
