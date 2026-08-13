@@ -21,3 +21,4 @@ dateparser
 playwright
 asyncio
 requests
+gigachat

@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     YANDEX_CLOUD_MODEL: str = ""
     BASE_AI_URL: str  = ""
     DEEPSEEK_API_KEY: str = YANDEX_CLOUD_API_KEY
+    SBER_CLIENT_ID: str = ""
+    SBER_SCOPE: str = ""
+    SBER_AUTHORIZATION_KEY: str = ""
+    SBER_CLIENT_SECRET: str = ""
 
     @property
     def DATABASE_URL(self) -> str:

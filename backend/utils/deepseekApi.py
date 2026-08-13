@@ -1,9 +1,8 @@
 from openai import OpenAI
 
-
 class DeepSeekModel:
     def __init__(self, api_key = "sk-683205028d7b4ec19f8fece279cf6b34", base_url = "https://api.deepseek.com", model = "deepseek-chat", project = None, max_tokens = 1500):
-        self.client = OpenAI(api_key=api_key, base_url=base_url, project = project) if project else OpenAI(api_key=api_key, base_url=base_url)
+        self.client = OpenAI(api_key=api_key, base_url=base_url, project = project, timeout=60.0) if project else OpenAI(api_key=api_key, base_url=base_url, timeout=60.0)
         self.model = model
         self.max_tokens = max_tokens
 
@@ -152,10 +151,11 @@ class DeepSeekModel:
             max_tokens=self.max_tokens
         )
         return response.choices[0].message.content
-
+    
 if __name__ == "__main__":
-    from config import settings
     import json
+    from config import settings
+    
     generation_model = DeepSeekModel(
         api_key=settings.YANDEX_CLOUD_API_KEY,
         base_url=settings.BASE_AI_URL,

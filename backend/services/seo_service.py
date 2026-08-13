@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy import select, desc
 from openai import AsyncOpenAI
 from backend.utils.deepseekApi import DeepSeekModel
+from backend.utils.GigaChatAPI import GigaChatModel
 from db.db import async_session_maker
 from db.ozon.dao import OzonItemDAO, OzonItemCategoryDAO, OzonItemHistoryDAO, SeoDataDAO
 from config import settings
@@ -16,6 +17,8 @@ generation_model = DeepSeekModel(
     project=settings.YANDEX_CLOUD_FOLDER,
     max_tokens=1500
 )
+gigachat_generation_model = GigaChatModel(credentials = settings.SBER_AUTHORIZATION_KEY,
+                                          scope = "GIGACHAT_API_PERS")
 
 async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
     # 1. Получаем данные товара
@@ -38,7 +41,8 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
 
     # 2. Генерируем SEO
     try:
-        content = generation_model.getSEObyYandex(name, category, description, price)
+        content = gigachat_generation_model.getSEO(name, category, description, price)
+        #content = generation_model.getSEObyYandex(name, category, description, price)
         result = json.loads(content)
 
         required = ("title", "description", "keywords", "advertising_spend_ratio", "leads", "CTR")
