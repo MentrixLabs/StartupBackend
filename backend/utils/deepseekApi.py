@@ -33,13 +33,16 @@ class DeepSeekModel:
                     "CTR": [old, new]
                 }}
                 """
-    
-            response = self.client.responses.create(
+            instructions="You are a professional SEO manager, you write the most selling texts with the most relevant keywords to the product. Answer in Russian.",
+                    
+            response = self.client.chat.completions.create(
                 model=self.model,
-                input=prompt,
-                instructions="You are a professional SEO manager, you write the most selling texts with the most relevant keywords to the product. Answer in Russian.",
+                messages=[
+                    {"role": "system", "content": instructions},
+                    {"role": "user", "content": prompt}
+                ],
                 temperature=0.7,
-                max_output_tokens=self.max_tokens
+                max_tokens=self.max_tokens
             )
     
             return response.output_text
@@ -103,13 +106,16 @@ class DeepSeekModel:
         return response.choices[0].message.content
 
     def getConsultationByYandex(self, message) -> str:
-    
-            response = self.client.responses.create(
-                model=self.model_uri,
-                input=message,
-                instructions="You are the best consultant, you always provide research in your answers and indicate their sources. You do not write the general information that I gave you, you only write recommendations and sources. Provide advice on product data. Answer in Russian.",
+            instructions="You are the best consultant, you always provide research in your answers and indicate their sources. You do not write the general information that I gave you, you only write recommendations and sources. Provide advice on product data. Answer in Russian.",
+                            
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": instructions},
+                    {"role": "user", "content": message}
+                ],
                 temperature=0.7,
-                max_output_tokens=500
+                max_tokens=self.max_tokens
             )
             return response.output_text
 
@@ -127,18 +133,21 @@ class DeepSeekModel:
             ],
             stream=False,
             temperature=0.7,
-            max_output_tokens=self.max_tokens
+            max_tokens=self.max_tokens
         )
 
         return response.choices[0].message.content
 
     def getIGbyYandex(self, product) -> str:
+        instructions="You are the best marketer, making the most selling text. You were given a picture of a product that will be listed later, so that you could make an infographic. Write a THESIS 4 MOST IMPORTANT SELLING CHARACTERISTICS of this item. Answer in Russian.",
     
-        response = self.client.responses.create(
-            model=self.model_uri,
-            input=product,
-            instructions="You are the best marketer, making the most selling text. You were given a picture of a product that will be listed later, so that you could make an infographic. Write a THESIS 4 MOST IMPORTANT SELLING CHARACTERISTICS of this item. Answer in Russian.",
+        response = self.client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": instructions},
+                {"role": "user", "content": product}
+            ],
+            model=self.model,
             temperature=0.7,
-            max_output_tokens=20
+            max_tokens=self.max_tokens
         )
         return response.output_text
