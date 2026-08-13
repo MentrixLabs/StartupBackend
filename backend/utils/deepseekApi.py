@@ -124,7 +124,6 @@ class DeepSeekModel:
 
         response = self.client.chat.completions.create(
             max_completion_tokens = 20,
-            max_tokens = 20,
             model=self.model,
             response_format = {"type": "text"},
             messages=[
