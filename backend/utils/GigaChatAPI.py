@@ -37,9 +37,9 @@ class GigaChatModel:
                 "description": "...",
                 "keywords": ["слово1", "слово2", ...],
                 "summary": [...],
-                "advertising_spend_ratio": ["old", "new"],
-                "leads": ["old", "new"],
-                "CTR": ["old", "new"]
+                "advertising_spend_ratio": [float(old), float(new)],
+                "leads": [float(old), float(new)],
+                "CTR": [float(old), float(new)]
             }}
             """
         instructions="You are a professional SEO manager, you write the most selling texts with the most relevant keywords to the product. Answer in Russian.",

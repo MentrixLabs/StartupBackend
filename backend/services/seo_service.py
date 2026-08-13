@@ -57,9 +57,9 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
                 "generated_description": result["description"],
                 "generated_keywords": result["keywords"],
                 "summary": result["summary"],
-                "advertising_spend_ratio": map(int, result["advertising_spend_ratio"]),
-                "leads": map(int, result["leads"]),
-                "ctr": map(int, result["CTR"]),
+                "advertising_spend_ratio": map(float, result["advertising_spend_ratio"]),
+                "leads": map(float, result["leads"]),
+                "ctr": map(float, result["CTR"]),
             }
             if existing:
                 # обновляем
