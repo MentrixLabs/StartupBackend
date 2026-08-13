@@ -8,7 +8,13 @@ from backend.core.security import verify_password, get_password_hash, create_acc
 from backend.core.dependencies import get_current_user
 from pydantic import BaseModel
 
+
 router = APIRouter()
+
+
+async def get_async_session() -> AsyncSession:
+    async with async_session_maker() as session:
+        yield session
 
 class TgIdUpdate(BaseModel):
     tg_id: int
@@ -17,7 +23,7 @@ class TgIdUpdate(BaseModel):
 async def update_tg_id(
     data: TgIdUpdate,
     current_user = Depends(get_current_user),
-    session: AsyncSession = Depends(async_session_maker)
+    session: AsyncSession = Depends(get_async_session)
 ):
     # Проверка, не занят ли tg_id другим пользователем
     existing = await UserDAO.find_one_or_none(tg_id=data.tg_id)
