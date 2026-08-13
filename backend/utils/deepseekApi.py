@@ -53,7 +53,6 @@ class DeepSeekModel:
 
         response = self.client.chat.completions.create(
             max_completion_tokens = 500,
-            max_tokens = 500,
             model=self.model,
             response_format = {"type": "text"},
             messages=[
@@ -62,7 +61,7 @@ class DeepSeekModel:
             ],
             stream=False,
             temperature=0.7,
-            max_tokens=self.max_tokens
+            max_tokens = self.max_tokens
         )
 
         return response.choices[0].message.content
