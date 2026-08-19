@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Date, Text, ARRAY
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Date, Text, ARRAY, JSON
 from sqlalchemy.orm import relationship
 from db.db import Base
 
@@ -30,7 +30,7 @@ class OzonItem(Base):
     seo_data = relationship("SeoData", back_populates="item", uselist=False)
     infographics_data = relationship("InfographicsData", back_populates="item", uselist=False)
     reports = relationship("Report", back_populates="goods")
-    
+
 
 class OzonItemCategory(Base):
     __tablename__ = "ozon_item_categories"
