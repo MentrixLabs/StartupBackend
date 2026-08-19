@@ -64,18 +64,22 @@ logging.basicConfig(level=logging.INFO)
 @router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     logging.info(("1. Получен запрос /login"))
-    async with async_session_maker() as session:
-        logging.info("2. Сессия создана")
-        user = await UserDAO.find_one_or_none(username=form_data.username)
-        logging.info("3. Запрос к БД выполнен")
-        if not user:
-            raise HTTPException(status_code=400, detail="Incorrect username or password")
-        if not verify_password(form_data.password, user.hashed_password):
-            raise HTTPException(status_code=400, detail="Incorrect username or password")
-        logging.info("4. user получен")
-        access_token = create_access_token(data={"sub": str(user.id)})
-        logging.info("5. access_token получен")
-        return {"access_token": access_token, "token_type": "bearer"}
+    try:
+        async with async_session_maker() as session:
+            logging.info("2. Сессия создана")
+            user = await UserDAO.find_one_or_none(username=form_data.username)
+            logging.info("3. Запрос к БД выполнен")
+            if not user:
+                raise HTTPException(status_code=400, detail="Incorrect username or password")
+            if not verify_password(form_data.password, user.hashed_password):
+                raise HTTPException(status_code=400, detail="Incorrect username or password")
+            logging.info("4. user получен")
+            access_token = create_access_token(data={"sub": str(user.id)})
+            logging.info("5. access_token получен")
+            return {"access_token": access_token, "token_type": "bearer"}
+    except Exception as e:
+        logging.error(f"Ошибка при работе с БД: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка сервера")
 
 @router.get("/me", response_model=UserOut)
 async def get_me(current_user=Depends(get_current_user)):
