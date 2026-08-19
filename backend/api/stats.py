@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import random
 import hashlib
 from typing import List, Dict, Any
-import lo
+import logging
 
 from db.db import async_session_maker
 from db.user.dao import UserDAO
