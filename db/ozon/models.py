@@ -29,7 +29,7 @@ class OzonItem(Base):
     feedbacks = relationship("OzonItemFeedback", back_populates="item")
     seo_data = relationship("SeoData", back_populates="item", uselist=False)
     infographics_data = relationship("InfographicsData", back_populates="item", uselist=False)
-    reports = relationship("Report", back_populates="goods")
+    reports = relationship("Report", back_populates="item")
 
 
 class OzonItemCategory(Base):
@@ -118,4 +118,3 @@ class Report(Base):
 
     # Связи
     goods = relationship("OzonItem", back_populates="reports")
-    user = relationship("User", back_populates="reports")
