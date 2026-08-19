@@ -29,7 +29,7 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(goods.router, prefix="/goods", tags=["goods"])
 app.include_router(seo.router, prefix="/seo", tags=["seo"])
 app.include_router(infographics.router, prefix="/infographics", tags=["infographics"])
-app.include_router(reports.router, prefix="/reports", tags=["reports"])
+app.include_router(reports.router)
 app.include_router(stats.router)
 
 

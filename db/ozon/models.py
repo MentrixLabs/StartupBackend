@@ -29,7 +29,8 @@ class OzonItem(Base):
     feedbacks = relationship("OzonItemFeedback", back_populates="item")
     seo_data = relationship("SeoData", back_populates="item", uselist=False)
     infographics_data = relationship("InfographicsData", back_populates="item", uselist=False)
-
+    reports = relationship("Report", back_populates="goods")
+    
 
 class OzonItemCategory(Base):
     __tablename__ = "ozon_item_categories"
@@ -102,3 +103,19 @@ class InfographicsData(Base):
 
     # Связь с товаром
     item = relationship("OzonItem", back_populates="infographics_data")
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    goods_id = Column(Integer, ForeignKey("ozon_items.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    seo_text = Column(Text, nullable=True)                # сгенерированный SEO-текст (если есть)
+    infographics = Column(ARRAY(String), nullable=True)   # массив URL инфографики
+    forecast_data = Column(JSON, nullable=True)           # данные прогнозов (JSON)
+
+    # Связи
+    goods = relationship("OzonItem", back_populates="reports")
+    user = relationship("User", back_populates="reports")

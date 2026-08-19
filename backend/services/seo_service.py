@@ -49,11 +49,17 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
         if not all(k in result for k in required):
             raise ValueError("Ответ не содержит необходимых полей")
         
+        summary_value = result.get("summary")
+        if isinstance(summary_value, list):
+            summary_value = " ".join(summary_value)  # или "\n".join(summary_value)
+        elif summary_value is None:
+            summary_value = ""
+
         seo_data = {
             "generated_title": result["title"],
             "generated_description": result["description"],
             "generated_keywords": result["keywords"],
-            "summary": result["summary"],
+            "summary": summary_value,
             "advertising_spend_ratio": [float(x) for x in result["advertising_spend_ratio"]],
             "leads": [float(x) for x in result["leads"]],
             "ctr": [float(x) for x in result["CTR"]],
@@ -90,7 +96,7 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
             "generated_title": fallback["title"],
             "generated_description": fallback["description"],
             "generated_keywords": fallback["keywords"],
-            "summary": None,  # fallback не имеет summary
+            "summary": summary_value,
             "advertising_spend_ratio": fallback["advertising_spend_ratio"],
             "leads": fallback["leads"],
             "ctr": fallback["ctr"],
