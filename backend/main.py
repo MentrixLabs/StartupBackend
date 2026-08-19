@@ -32,6 +32,7 @@ app.include_router(infographics.router, prefix="/infographics", tags=["infograph
 app.include_router(reports.router, prefix="/reports", tags=["reports"])
 app.include_router(stats.router)
 
+
 @app.get("/")
 async def root():
     return {"message": "Proskladai API is running"}

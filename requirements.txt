@@ -22,3 +22,7 @@ playwright
 asyncio
 requests
 gigachat
+diffusers
+transformers
+torch
+accelerate

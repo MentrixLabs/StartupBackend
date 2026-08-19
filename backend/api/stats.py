@@ -5,15 +5,16 @@ from datetime import datetime, timedelta
 import random
 import hashlib
 from typing import List, Dict, Any
+import lo
 
 from db.db import async_session_maker
 from db.user.dao import UserDAO
-from db.ozon.models import OzonItem, SeoData           # модель SEO-данных (у вас в db.ozon.models)
+from db.ozon.models import OzonItem, SeoData, InfographicsData           # модель SEO-данных (у вас в db.ozon.models)
 from backend.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/stats", tags=["stats"])
+logger = logging.getLogger(__name__)
 
-# Вспомогательная функция для получения сессии (как в auth.py)
 async def get_async_session() -> AsyncSession:
     async with async_session_maker() as session:
         yield session
@@ -30,7 +31,7 @@ async def get_weekly_activity(
     today = datetime.utcnow().date()
     start_date = today - timedelta(days=6)
     
-    # Группируем по дате (created_at::date) для SeoData, связанного с товарами пользователя
+    # Явное соединение SeoData -> OzonItem через goods_id
     stmt = (
         select(
             func.date(SeoData.created_at).label("day"),
@@ -45,16 +46,17 @@ async def get_weekly_activity(
     result = await session.execute(stmt)
     rows = result.all()
     
-    # Заполняем все 7 дней (если нет данных – 0)
+    # Заполняем все 7 дней
     day_counts = {row.day: row.count for row in rows}
     week_days = []
     for i in range(7):
         d = start_date + timedelta(days=i)
         week_days.append({
-            "day": d.strftime("%a"),  # Пн, Вт, ...
+            "day": d.strftime("%a"),  # Mon, Tue, ...
             "seo": day_counts.get(d, 0),
-            "infographics": 0  # пока нет отдельной таблицы инфографики
+            "infographics": 0  # пока нет отдельной инфографики по дням
         })
+    logger.info(f"Weekly activity for user {current_user.id}: {week_days}")
     return week_days
 
 
@@ -67,26 +69,40 @@ async def get_content_distribution(
     Общее количество SEO, инфографики и отчётов.
     """
     # Количество SEO (записей в SeoData)
-    seo_count_stmt = select(func.count()).select_from(SeoData).join(OzonItem).where(OzonItem.user_id == current_user.id)
+    seo_count_stmt = (
+        select(func.count())
+        .select_from(SeoData)
+        .join(OzonItem, OzonItem.id == SeoData.goods_id)
+        .where(OzonItem.user_id == current_user.id)
+    )
     seo_count = await session.scalar(seo_count_stmt) or 0
-    
-    # Количество инфографики – сумма длин массивов main_imgs и desc_imgs
-    total_images_stmt = select(
-        func.sum(
-            func.coalesce(func.array_length(OzonItem.main_imgs, 1), 0) +
-            func.coalesce(func.array_length(OzonItem.desc_imgs, 1), 0)
+
+    # Количество товаров, у которых есть сгенерированная или улучшенная инфографика
+    # (т.е. запись в infographics_data с непустым массивом generated_images или enhanced_images)
+    infographics_count_stmt = (
+        select(func.count())
+        .select_from(InfographicsData)
+        .join(OzonItem, OzonItem.id == InfographicsData.goods_id)
+        .where(OzonItem.user_id == current_user.id)
+        .where(
+            or_(
+                InfographicsData.generated_images != None,
+                InfographicsData.enhanced_images != None
+            )
         )
-    ).where(OzonItem.user_id == current_user.id)
-    infographics_count = await session.scalar(total_images_stmt) or 0
-    
-    # Отчёты – пока заглушка (можно добавить таблицу Reports позже)
+    )
+    infographics_count = await session.scalar(infographics_count_stmt) or 0
+
+    # Отчёты – пока заглушка
     reports_count = 0
-    
+
+    logger.info(f"Content distribution for user {current_user.id}: SEO={seo_count}, Infographics={infographics_count}, Reports={reports_count}")
     return {
         "seo": seo_count,
         "infographics": infographics_count,
         "reports": reports_count
     }
+
 
 
 @router.get("/recommendation")

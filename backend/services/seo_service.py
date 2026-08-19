@@ -48,24 +48,24 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
         required = ("title", "description", "keywords", "summary", "advertising_spend_ratio", "leads", "CTR")
         if not all(k in result for k in required):
             raise ValueError("Ответ не содержит необходимых полей")
+        
+        seo_data = {
+            "generated_title": result["title"],
+            "generated_description": result["description"],
+            "generated_keywords": result["keywords"],
+            "summary": result["summary"],
+            "advertising_spend_ratio": [float(x) for x in result["advertising_spend_ratio"]],
+            "leads": [float(x) for x in result["leads"]],
+            "ctr": [float(x) for x in result["CTR"]],
+        }
 
         # 3. Сохраняем в БД
         async with async_session_maker() as session:
             existing = await SeoDataDAO.find_one_or_none(goods_id=goods_id)
-            data = {
-                "generated_title": result["title"],
-                "generated_description": result["description"],
-                "generated_keywords": result["keywords"],
-                "summary": result["summary"],
-                "advertising_spend_ratio": map(float, result["advertising_spend_ratio"]),
-                "leads": map(float, result["leads"]),
-                "ctr": map(float, result["CTR"]),
-            }
             if existing:
-                # обновляем
-                await SeoDataDAO.update(goods_id=goods_id, **data)
+                await SeoDataDAO.update(goods_id=goods_id, **seo_data)
             else:
-                await SeoDataDAO.add(goods_id=goods_id, **data)
+                await SeoDataDAO.add(goods_id=goods_id, **seo_data)
 
         # 4. Возвращаем
         return {
@@ -76,14 +76,30 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
             "leads": result["leads"],
             "CTR": result["CTR"],
         }
-    except Exception as e:
-        print(f"Ошибка генерации SEO: {e}")
-        # fallback
-        return {
+    except Exception as e:# Fallback – тоже сохраняем в БД, чтобы у пользователя была запись
+        print(f"Ошибка генерации SEO для goods_id={goods_id}: {e}", exc_info=True)
+        fallback = {
             "title": name[:60],
             "description": f"Отличный выбор – {name}"[:300],
             "keywords": [f"Купить {name}", f"{name} цена", "лучшая цена", f"{category} {name}"] if category else [f"Купить {name}", f"{name} цена", "лучшая цена"],
-            "advertising_spend_ratio": [0, 0],
-            "leads": [0, 0],
-            "CTR": [0, 0],
+            "advertising_spend_ratio": [0.0, 0.0],
+            "leads": [0.0, 0.0],
+            "ctr": [0.0, 0.0],
         }
+        seo_data = {
+            "generated_title": fallback["title"],
+            "generated_description": fallback["description"],
+            "generated_keywords": fallback["keywords"],
+            "summary": None,  # fallback не имеет summary
+            "advertising_spend_ratio": fallback["advertising_spend_ratio"],
+            "leads": fallback["leads"],
+            "ctr": fallback["ctr"],
+        }
+        # Сохраняем fallback в БД
+        async with async_session_maker() as session:
+            existing = await SeoDataDAO.find_one_or_none(goods_id=goods_id)
+            if existing:
+                await SeoDataDAO.update(goods_id=goods_id, **seo_data)
+            else:
+                await SeoDataDAO.add(goods_id=goods_id, **seo_data)
+        return fallback

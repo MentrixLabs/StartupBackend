@@ -1,5 +1,5 @@
 from db.dao.base import BaseDAO
-from db.ozon.models import OzonItem, OzonItemCategory, OzonItemHistory, OzonItemFeedback, SeoData, SeoCompetitor
+from db.ozon.models import OzonItem, OzonItemCategory, OzonItemHistory, OzonItemFeedback, SeoData, SeoCompetitor, InfographicsData
 from db.db import async_session_maker
 
 class OzonItemDAO(BaseDAO):
@@ -31,6 +31,9 @@ class SeoDataDAO(BaseDAO):
 
 class SeoCompetitorDAO(BaseDAO):
     model = SeoCompetitor
+
+class InfographicsDataDAO(BaseDAO):
+    model = InfographicsData
 
 @classmethod
 async def delete(cls, **filter_by):

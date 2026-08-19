@@ -24,11 +24,11 @@ class OzonItem(Base):
     main_imgs = Column(ARRAY(String))   # массив URL
     desc_imgs = Column(ARRAY(String))
 
-    # Связи (остаются без изменений)
     categories = relationship("OzonItemCategory", back_populates="item")
     history = relationship("OzonItemHistory", back_populates="item")
     feedbacks = relationship("OzonItemFeedback", back_populates="item")
     seo_data = relationship("SeoData", back_populates="item", uselist=False)
+    infographics_data = relationship("InfographicsData", back_populates="item", uselist=False)
 
 
 class OzonItemCategory(Base):
@@ -90,3 +90,15 @@ class SeoCompetitor(Base):
     competitor_description = Column(Text, nullable=False)
     competitor_keywords = Column(ARRAY(String), nullable=False)
     competitor_url = Column(String(255), nullable=True)
+
+class InfographicsData(Base):
+    __tablename__ = "infographics_data"
+
+    goods_id = Column(Integer, ForeignKey("ozon_items.id"), primary_key=True, nullable=False)
+    generated_images = Column(ARRAY(String))   # массив URL/data-url сгенерированных изображений
+    enhanced_images = Column(ARRAY(String))    # массив URL/data-url улучшенных изображений
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Связь с товаром
+    item = relationship("OzonItem", back_populates="infographics_data")
