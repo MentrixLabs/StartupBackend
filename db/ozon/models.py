@@ -117,4 +117,21 @@ class Report(Base):
     forecast_data = Column(JSON, nullable=True)           # данные прогнозов (JSON)
 
     # Связи
-    goods = relationship("OzonItem", back_populates="reports")
+    item = relationship("OzonItem", back_populates="reports")
+
+
+class PaymentTransaction(Base):
+    __tablename__ = "payment_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    order_id = Column(String(64), unique=True, nullable=False)   # внутренний номер заказа
+    provider_transaction_id = Column(String(64), nullable=True)  # ID транзакции у провайдера
+    amount = Column(Float, nullable=False)
+    currency = Column(String(3), default="RUB")
+    status = Column(String(20), default="pending")  # pending, succeeded, canceled, refunded
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Связи
+    user = relationship("User", back_populates="payments")

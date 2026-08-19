@@ -1,6 +1,9 @@
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, DateTime, Boolean, Date, BigInteger, ForeignKey, Enum
+from sqlalchemy import Column, String, Integer, DateTime, Boolean, Date, BigInteger, ForeignKey, Enum, Float, Text
+from sqlalchemy.orm import relationship
 from db.db import Base
+
+from db.ozon.models import PaymentTransaction
 
 
 class User(Base):
@@ -27,3 +30,4 @@ class Profile(Base):
     api_key_ozon = Column(String, unique=True)
     client_id_ozon = Column(Integer, unique=True)
     provider_id = Column(Integer, nullable=True)
+    payments = relationship("PaymentTransaction", back_populates="user")

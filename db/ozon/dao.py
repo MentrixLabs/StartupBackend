@@ -1,5 +1,5 @@
 from db.dao.base import BaseDAO
-from db.ozon.models import OzonItem, OzonItemCategory, OzonItemHistory, OzonItemFeedback, SeoData, SeoCompetitor, InfographicsData, Report
+from db.ozon.models import OzonItem, OzonItemCategory, OzonItemHistory, OzonItemFeedback, SeoData, SeoCompetitor, InfographicsData, Report, PaymentTransaction
 from db.db import async_session_maker
 
 class OzonItemDAO(BaseDAO):
@@ -47,3 +47,6 @@ async def delete(cls, **filter_by):
             await session.commit()
             return True
         return False
+
+class PaymentTransactionDAO(BaseDAO):
+    model = PaymentTransaction
