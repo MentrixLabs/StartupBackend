@@ -43,19 +43,33 @@ async def get_weekly_activity(
         .group_by(func.date(SeoData.created_at))
         .order_by(func.date(SeoData.created_at))
     )
-    result = await session.execute(stmt)
-    rows = result.all()
+    seo_result = await session.execute(stmt)
+    seo_rows = seo_result.all()
+    seo_by_day = {row.day: row.count for row in seo_rows}
+
+    ig_stmt = (
+        select(
+            func.date(InfographicsData.created_at).label("day"),
+            func.count().label("count")
+        )
+        .join(OzonItem, OzonItem.id == InfographicsData.goods_id)
+        .where(OzonItem.user_id == current_user.id)
+        .where(InfographicsData.created_at >= start_date)
+        .group_by(func.date(InfographicsData.created_at))
+    )
+    ig_result = await session.execute(ig_stmt)
+    ig_rows = ig_result.all()
+    ig_by_day = {row.day: row.count for row in ig_rows}
     
-    # Заполняем все 7 дней
-    day_counts = {row.day: row.count for row in rows}
     week_days = []
     for i in range(7):
         d = start_date + timedelta(days=i)
         week_days.append({
-            "day": d.strftime("%a"),  # Mon, Tue, ...
-            "seo": day_counts.get(d, 0),
-            "infographics": 0  # пока нет отдельной инфографики по дням
-        })
+            "day": d.strftime("%a"),
+            "seo": seo_by_day.get(d, 0),
+            "infographics": ig_by_day.get(d, 0)
+    })
+
     logger.info(f"Weekly activity for user {current_user.id}: {week_days}")
     return week_days
 

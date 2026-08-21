@@ -10,6 +10,10 @@ from db.ozon.dao import ReportDAO, OzonItemDAO
 from db.db import async_session_maker
 from backend.services.report_service import generate_report_data
 
+from logging import Logger
+
+logger = Logger(__name__)
+
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 # ---- Схемы ----
@@ -87,39 +91,42 @@ async def generate_report(
     """
     Сгенерировать отчёт для указанного товара и сохранить в БД.
     """
-    # Проверяем, что товар принадлежит пользователю
-    goods = await OzonItemDAO.find_one_or_none(id=req.goods_id, user_id=current_user.id)
-    if not goods:
-        raise HTTPException(status_code=404, detail="Товар не найден или доступ запрещён")
-
-    # Генерируем данные отчёта
     try:
-        forecast_data = await generate_report_data(req.goods_id, current_user.id)
+        # Проверяем, что товар принадлежит пользователю
+        goods = await OzonItemDAO.find_one_or_none(id=req.goods_id, user_id=current_user.id)
+        if not goods:
+            raise HTTPException(status_code=404, detail="Товар не найден или доступ запрещён")
+
+        # Генерируем данные отчёта
+        try:
+            forecast_data = await generate_report_data(req.goods_id, current_user.id)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Ошибка генерации отчёта: {str(e)}")
+
+        # Подготавливаем SEO-текст и инфографику из данных товара (можно расширить)
+        seo_text = goods.description or ""
+        infographics = (goods.main_imgs or []) + (goods.desc_imgs or [])
+
+        # Создаём запись отчёта
+        new_report = await ReportDAO.add(
+            goods_id=req.goods_id,
+            user_id=current_user.id,
+            seo_text=seo_text,
+            infographics=infographics,
+            forecast_data=forecast_data
+        )
+
+        return ReportResponse(
+            id=new_report.id,
+            goods_id=new_report.goods_id,
+            created_at=new_report.created_at,
+            seo_text=new_report.seo_text,
+            infographics=new_report.infographics or [],
+            forecast_data=new_report.forecast_data or {}
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка генерации отчёта: {str(e)}")
-
-    # Подготавливаем SEO-текст и инфографику из данных товара (можно расширить)
-    seo_text = goods.description or ""
-    infographics = (goods.main_imgs or []) + (goods.desc_imgs or [])
-
-    # Создаём запись отчёта
-    new_report = await ReportDAO.add(
-        goods_id=req.goods_id,
-        user_id=current_user.id,
-        seo_text=seo_text,
-        infographics=infographics,
-        forecast_data=forecast_data
-    )
-
-    return ReportResponse(
-        id=new_report.id,
-        goods_id=new_report.goods_id,
-        created_at=new_report.created_at,
-        seo_text=new_report.seo_text,
-        infographics=new_report.infographics or [],
-        forecast_data=new_report.forecast_data or {}
-    )
-
+        logger.error(f"Report generation failed: {e}", exc_info=True)
+        raise HTTPException(500, f"Ошибка генерации отчёта: {str(e)}")
 
 @router.delete("/{report_id}", status_code=204)
 async def delete_report(

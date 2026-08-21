@@ -18,6 +18,17 @@ gigachat_model = GigaChatModel(
     scope="GIGACHAT_API_PERS"
 )
 
+def serialize_dates(obj):
+    if isinstance(obj, dict):
+        return {k: serialize_dates(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize_dates(item) for item in obj]
+    elif hasattr(obj, 'isoformat'):  # date, datetime
+        return obj.isoformat()
+    else:
+        return obj
+
+
 async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
     """
     Генерирует расширенный отчёт по товару с прогнозами и рекомендациями.
@@ -144,6 +155,8 @@ async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
 
         # Добавляем goods_id
         result["goods_id"] = goods_id
+
+        result = serialize_dates(result)
 
         return result
 
