@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
+import logging
+import io
 
 from backend.core.dependencies import get_current_user
 from db.user.models import User
@@ -10,9 +12,7 @@ from db.ozon.dao import ReportDAO, OzonItemDAO
 from db.db import async_session_maker
 from backend.services.report_service import generate_report_data
 
-from logging import Logger
-
-logger = Logger(__name__)
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -49,11 +49,9 @@ async def get_reports(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить список отчётов пользователя с пагинацией."""
-    # Подсчёт общего количества
     all_reports = await ReportDAO.find_all(user_id=current_user.id)
     total = len(all_reports) if all_reports else 0
 
-    # Сортировка по убыванию created_at (новые сверху)
     if all_reports:
         all_reports.sort(key=lambda r: r.created_at, reverse=True)
         start = (page - 1) * size
@@ -82,32 +80,42 @@ async def get_reports(
     )
 
 
+@router.get("/{report_id}", response_model=ReportResponse)
+async def get_report(
+    report_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Получить данные одного отчёта для просмотра."""
+    report = await ReportDAO.find_one_or_none(id=report_id, user_id=current_user.id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Отчёт не найден или доступ запрещён")
+    return ReportResponse(
+        id=report.id,
+        goods_id=report.goods_id,
+        created_at=report.created_at,
+        seo_text=report.seo_text,
+        infographics=report.infographics or [],
+        forecast_data=report.forecast_data or {}
+    )
+
+
 @router.post("/generate", response_model=ReportResponse)
 async def generate_report(
     req: ReportCreateRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    """
-    Сгенерировать отчёт для указанного товара и сохранить в БД.
-    """
     try:
-        # Проверяем, что товар принадлежит пользователю
         goods = await OzonItemDAO.find_one_or_none(id=req.goods_id, user_id=current_user.id)
         if not goods:
-            raise HTTPException(status_code=404, detail="Товар не найден или доступ запрещён")
+            raise HTTPException(404, "Товар не найден или доступ запрещён")
 
-        # Генерируем данные отчёта
-        try:
-            forecast_data = await generate_report_data(req.goods_id, current_user.id)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Ошибка генерации отчёта: {str(e)}")
+        forecast_data = await generate_report_data(req.goods_id, current_user.id)
 
-        # Подготавливаем SEO-текст и инфографику из данных товара (можно расширить)
         seo_text = goods.description or ""
         infographics = (goods.main_imgs or []) + (goods.desc_imgs or [])
 
-        # Создаём запись отчёта
         new_report = await ReportDAO.add(
             goods_id=req.goods_id,
             user_id=current_user.id,
@@ -128,36 +136,165 @@ async def generate_report(
         logger.error(f"Report generation failed: {e}", exc_info=True)
         raise HTTPException(500, f"Ошибка генерации отчёта: {str(e)}")
 
+
 @router.delete("/{report_id}", status_code=204)
 async def delete_report(
     report_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    """Удалить отчёт по ID (только если он принадлежит пользователю)."""
     report = await ReportDAO.find_one_or_none(id=report_id, user_id=current_user.id)
     if not report:
-        raise HTTPException(status_code=404, detail="Отчёт не найден или доступ запрещён")
+        raise HTTPException(404, "Отчёт не найден или доступ запрещён")
     await ReportDAO.delete(id=report_id)
     return None
 
 
-@router.get("/download/{report_id}")
+@router.get("/{report_id}/download")
 async def download_report_pdf(
     report_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    """Заглушка для скачивания отчёта в PDF (пока возвращает JSON)."""
+    """Скачать отчёт в формате PDF."""
     report = await ReportDAO.find_one_or_none(id=report_id, user_id=current_user.id)
     if not report:
-        raise HTTPException(status_code=404, detail="Отчёт не найден или доступ запрещён")
-    # Здесь можно сгенерировать PDF, но пока вернём JSON с данными отчёта
-    return {
-        "message": "Скачивание PDF пока не реализовано. Вот данные отчёта:",
-        "data": {
-            "id": report.id,
-            "created_at": report.created_at,
-            "forecast": report.forecast_data
+        raise HTTPException(404, "Отчёт не найден или доступ запрещён")
+
+    # Получаем данные товара для названия
+    goods = await OzonItemDAO.find_one_or_none(id=report.goods_id, user_id=current_user.id)
+    goods_name = goods.cardname if goods else "Товар"
+
+    forecast_data = report.forecast_data or {}
+
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4,
+                                rightMargin=2*cm, leftMargin=2*cm,
+                                topMargin=2*cm, bottomMargin=2*cm)
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'TitleStyle',
+            parent=styles['Title'],
+            fontSize=16,
+            alignment=TA_CENTER,
+            spaceAfter=20
+        )
+        heading_style = ParagraphStyle(
+            'HeadingStyle',
+            parent=styles['Heading2'],
+            fontSize=12,
+            spaceAfter=10
+        )
+        body_style = ParagraphStyle(
+            'BodyStyle',
+            parent=styles['BodyText'],
+            fontSize=10,
+            spaceAfter=6
+        )
+
+        elements = []
+
+        # Заголовок
+        elements.append(Paragraph(f"Отчёт по товару: {goods_name}", title_style))
+        elements.append(Paragraph(f"Дата: {report.created_at.strftime('%d.%m.%Y %H:%M')}", body_style))
+        elements.append(Spacer(1, 0.5*cm))
+
+        # Прогноз остатков
+        elements.append(Paragraph("Прогноз остатков", heading_style))
+        elements.append(Paragraph(forecast_data.get("days_to_out_of_stock", "Нет данных"), body_style))
+        elements.append(Spacer(1, 0.3*cm))
+
+        # Динамика цены
+        elements.append(Paragraph("Динамика цены", heading_style))
+        elements.append(Paragraph(forecast_data.get("price_dynamic", "Нет данных"), body_style))
+        elements.append(Spacer(1, 0.3*cm))
+
+        # Рекомендуемая цена
+        rec_price = forecast_data.get("recommended_price")
+        if rec_price is not None:
+            elements.append(Paragraph("Рекомендуемая цена", heading_style))
+            elements.append(Paragraph(f"{rec_price:.2f} RUB", body_style))
+            elements.append(Spacer(1, 0.3*cm))
+
+        # Ключевые метрики
+        metrics = forecast_data.get("key_metrics", {})
+        if metrics:
+            elements.append(Paragraph("Ключевые метрики", heading_style))
+            data = [
+                ["Средняя цена", f"{metrics.get('avg_price', '—')}"],
+                ["Максимальная цена", f"{metrics.get('max_price', '—')}"],
+                ["Минимальная цена", f"{metrics.get('min_price', '—')}"],
+                ["Волатильность", f"{metrics.get('volatility', '—')}"]
+            ]
+            table = Table(data, colWidths=[4*cm, 6*cm])
+            table.setStyle(TableStyle([
+                ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+                ('FONTSIZE', (0,0), (-1,-1), 10),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('BACKGROUND', (0,0), (0,-1), colors.lightgrey),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ]))
+            elements.append(table)
+            elements.append(Spacer(1, 0.5*cm))
+
+        # Рекомендации
+        recommendations = forecast_data.get("recommendations", "Нет рекомендаций")
+        if recommendations:
+            elements.append(Paragraph("Рекомендации", heading_style))
+            elements.append(Paragraph(recommendations, body_style))
+            elements.append(Spacer(1, 0.3*cm))
+
+        # Прогноз по дням (если есть)
+        forecast = forecast_data.get("forecast", [])
+        if forecast:
+            elements.append(Paragraph("Прогноз по дням (первые 10)", heading_style))
+            table_data = [["Дата", "Цена", "Спрос", "Остаток"]]
+            for item in forecast[:10]:
+                table_data.append([
+                    item.get("date", ""),
+                    f"{item.get('price', 0):.0f}",
+                    f"{item.get('demand', 0):.0f}",
+                    f"{item.get('stock', 0):.0f}"
+                ])
+            table = Table(table_data, colWidths=[2.5*cm, 2.5*cm, 2.5*cm, 2.5*cm])
+            table.setStyle(TableStyle([
+                ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+                ('FONTSIZE', (0,0), (-1,-1), 8),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ]))
+            elements.append(table)
+
+        doc.build(elements)
+        buffer.seek(0)
+
+        from fastapi.responses import Response
+        return Response(
+            content=buffer.getvalue(),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="report_{report_id}.pdf"'}
+        )
+
+    except ImportError:
+        logger.warning("reportlab not installed – returning JSON instead of PDF")
+        return {
+            "message": "PDF generation not available (install reportlab)",
+            "data": {
+                "id": report.id,
+                "created_at": report.created_at,
+                "forecast": forecast_data
+            }
         }
-    }
+    except Exception as e:
+        logger.error(f"PDF generation failed: {e}", exc_info=True)
+        raise HTTPException(500, f"Ошибка генерации PDF: {str(e)}")

@@ -26,3 +26,4 @@ diffusers
 transformers
 torch
 accelerate
+reportlab
