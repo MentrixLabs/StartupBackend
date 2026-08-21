@@ -104,3 +104,14 @@ class GoodsOut(GoodsBase):
 
     class Config:
         from_attributes = True
+
+from pydantic import BaseModel
+from datetime import date
+from typing import List, Optional
+
+class StockHistoryEntry(BaseModel):
+    record_date: date
+    fbs_count: int
+
+class StockHistoryRequest(BaseModel):
+    entries: List[StockHistoryEntry]   # массив записей

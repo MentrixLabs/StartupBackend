@@ -49,6 +49,9 @@ async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
         # Сортируем по дате
         history = sorted(history, key=lambda h: h.record_date)
 
+        fbs_counts = [h.fbs_count for h in history if h.fbs_count is not None]
+        current_stock = fbs_counts[-1] if fbs_counts else None
+
         # Подготовка данных для промпта
         name = goods.cardname or "Товар"
         description = goods.description or ""
@@ -75,59 +78,79 @@ async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
             infographics_info += ", улучшенные изображения отсутствуют"
     # 2. Формируем промпт для GigaChat
     prompt = f"""
-    Ты — аналитик маркетплейса. Проанализируй следующие данные о товаре и сгенерируй прогнозы и рекомендации.
-        
-    Название товара: {name}
-    Категория: {category}
-    Бренд: {brand}
-    Поставщик: {provider}
-    Описание: {description[:500]}
-    Текущая цена: {original_price} {currency}
-    История цен (дата, цена): {list(zip(dates, prices)) if prices else 'Нет данных'}
-    История рейтингов: {list(zip(dates, ratings)) if ratings else 'Нет данных'}
-    История количества отзывов: {list(zip(dates, reviews_counts)) if reviews_counts else 'Нет данных'}
-    Инфографика: {infographics_info}
+    Ты — аналитик маркетплейса с опытом в e-commerce и цифровом маркетинге. Проанализируй данные товара и сгенерируй прогнозы на 30 дней.
 
-    На основе этих данных построй прогноз:
-    1. Прогноз остатков (когда товар может закончиться, если известна динамика продаж) – если данных нет, укажи "Недостаточно данных".
-    2. Динамика цены – как цена будет меняться в ближайшие 30 дней (рост, падение, стабильность).
-    3. Прогноз спроса – ожидаемое количество продаж в день на ближайшие 30 дней.
-    4. Рекомендуемая цена для максимизации прибыли.
-    5. Прогноз выручки (цена * спрос) на каждый день.
-    6. Ключевые метрики: средняя цена, максимальная, минимальная, волатильность цены (стандартное отклонение).
-    7. Ключевые слова для рекламных кампаний, релевантные товару.
-    8. Текстовые рекомендации по улучшению карточки товара (SEO, описание, изображения).
+    Данные товара:
+    - Название: {name}
+    - Категория: {category}
+    - Бренд: {brand}
+    - Поставщик: {provider}
+    - Описание: {description[:300]}
+    - Текущая цена: {original_price} {currency}
+    - История цен (дата, цена): {list(zip(dates, prices)) if prices else 'Нет'}
+    - История рейтингов: {list(zip(dates, ratings)) if ratings else 'Нет'}
+    - История отзывов: {list(zip(dates, reviews_counts)) if reviews_counts else 'Нет'}
+    - Инфографика: {infographics_info}
+    - Текущий остаток на складе: {current_stock if current_stock is not None else 'Неизвестно'}
+    - История остатков: {list(zip(dates, fbs_counts)) if fbs_counts else 'Нет'}
 
-    Верни ответ строго в формате JSON со следующими полями:
-    {{
-      "days_to_out_of_stock": "строка (например, 'Товар закончится через 15 дней' или 'Недостаточно данных')",
-      "price_dynamic": "строка (краткое описание динамики)",
-      "forecast": [{{"date": "YYYY-MM-DD", "price": число, "demand": число, "stock": число}}],
-      "recommended_price": число,
-      "revenue_forecast": [{{"date": "YYYY-MM-DD", "revenue": число}}],
-      "key_metrics": {{"avg_price": число, "max_price": число, "min_price": число, "volatility": число}},
-      "keywords": ["ключевое слово1", "ключевое слово2", ...],
-      "recommendations": "текст рекомендаций"
-    }}
-    В полях forecast и revenue_forecast должно быть 30 записей (на каждый день), начиная с сегодняшнего дня.
-    Если данных недостаточно, заполни массив прогнозов приблизительными значениями на основе имеющихся.
+    Твоя задача – построить прогнозы и дать рекомендации, используя экономические и маркетинговые концепции.
+
+    Сгенерируй JSON-ответ строго по следующей схеме. Все поля обязательны.
+    Если данных недостаточно, используй разумные приближения на основе имеющейся информации.
+
+    {
+    "days_to_out_of_stock": "строка – прогноз, когда товар закончится (например, 'Товар закончится через 15 дней' или 'Недостаточно данных')",
+    "price_dynamic": "строка – описание динамики цены на 30 дней (рост, падение, стабильность) с кратким обоснованием",
+    "forecast": [
+        {"date": "YYYY-MM-DD", "price": число, "demand": число, "stock": число}
+    ], // 30 записей, начиная с сегодня
+    "recommended_price": число,
+    "revenue_forecast": [
+        {"date": "YYYY-MM-DD", "revenue": число}
+    ], // 30 записей
+    "key_metrics": {
+        "avg_price": число,
+        "max_price": число,
+        "min_price": число,
+        "volatility": число
+    },
+    "advertising_spend_ratio_forecast": [
+        {"date": "YYYY-MM-DD", "value": [число, число, число]}
+    ], // 30 записей, массив из трёх значений: [следование рекомендациям, бездействие, пересечение]
+    "leads_forecast": [
+        {"date": "YYYY-MM-DD", "value": [число, число, число]}
+    ], // 30 записей, аналогично
+    "ctr_forecast": [
+        {"date": "YYYY-MM-DD", "value": [число, число, число]}
+    ], // 30 записей, аналогично
+    "advertising_spend_ratio_description": "строка – развёрнутое описание (на русском, но с использованием английских научных терминов), почему качественные SEO и инфографика снижают долю рекламных расходов по сравнению с текущей карточкой. Объясни механизм: улучшение органической видимости -> рост кликабельности -> снижение зависимости от платного трафика. Подчеркни, что в рамках недельного AB-тестирования важно следовать предложенным планкам для получения статистически значимых результатов.",
+    "leads_description": "строка – аналогично, но про лиды: почему улучшенный контент увеличивает количество целевых лидов. Используй термины: conversion rate, lead quality, funnel efficiency, A/B testing significance.",
+    "ctr_description": "строка – аналогично, но про CTR: почему оптимизированные заголовки и описания повышают кликабельность. Упомяни: click-through rate, ad relevance, user engagement, attribution modelling.",
+    "keywords": ["ключевое слово1", "ключевое слово2", ...],
+    "recommendations": "текст рекомендаций по улучшению карточки товара (SEO, описание, изображения, ценообразование)"
+    }
+
+    Важно: все прогнозные массивы должны содержать ровно 30 записей, начиная с сегодняшнего дня (date = YYYY-MM-DD).
+    Если история цен или остатков отсутствует, экстраполируй данные на основе имеющихся трендов или используй средние значения.
+
+    Ответ должен быть только JSON, без лишнего текста.
     """
 
     try:
-        # 3. Запрос к GigaChat
-        # Предполагаем, что у GigaChatModel есть метод chat_completion или аналогичный.
-        # В seo_service используется gigachat_generation_model.getSEO(...), который возвращает строку JSON.
-        # Мы можем использовать тот же метод, но с другим промптом.
-        # Если метод getSEO принимает параметры (name, category, description, price), то он не подойдёт.
-        # Создадим универсальную функцию для отправки промпта.
-        response_text = await _ask_gigachat(prompt)
+        response_text = await gigachat_model.chat(prompt)
         result = json.loads(response_text)
 
-        # Проверка наличия всех ожидаемых полей
-        required_fields = ("days_to_out_of_stock", "price_dynamic", "forecast", "recommended_price",
-                           "revenue_forecast", "key_metrics", "keywords", "recommendations")
+        required_fields = (
+            "days_to_out_of_stock", "price_dynamic", "forecast", "recommended_price",
+            "revenue_forecast", "key_metrics",
+            "advertising_spend_ratio_forecast", "leads_forecast", "ctr_forecast",
+            "advertising_spend_ratio_description", "leads_description", "ctr_description",
+            "keywords", "recommendations"
+        )
         if not all(field in result for field in required_fields):
-            raise ValueError("Ответ GigaChat не содержит всех необходимых полей")
+            missing = [f for f in required_fields if f not in result]
+            raise ValueError(f"Missing fields: {missing}")
 
         # Преобразуем типы (при необходимости)
         # forecast и revenue_forecast должны быть списками
@@ -166,53 +189,18 @@ async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
         return _build_fallback_report(goods_id, name, category, prices, ratings, reviews_counts)
 
 
-async def _ask_gigachat(prompt: str) -> str:
-    """
-    Отправляет промпт в GigaChat и возвращает текстовый ответ.
-    Использует тот же клиент, что и SEO, но с кастомным запросом.
-    """
-    # Так как у нас нет прямого доступа к низкоуровневому клиенту,
-    # мы используем метод getSEO, но с подменой параметров.
-    # Можно создать новый экземпляр и вызвать его метод, но проще использовать существующий.
-    # В реальности нужно реализовать метод chat_completion в GigaChatModel.
-    # Пока используем заглушку – возвращаем тестовые данные.
-    # ВАЖНО: заменить на реальный вызов GigaChat.
-    # Примерная реализация:
-    # response = await gigachat_model.chat(prompt)
-    # return response
-
-    # Временная заглушка (имитация ответа GigaChat)
-    # В реальном проекте здесь должен быть вызов API GigaChat.
-    logger.warning("Используется заглушка GigaChat для отчёта")
-    return json.dumps({
-        "days_to_out_of_stock": "Недостаточно данных для точного прогноза.",
-        "price_dynamic": "Цена стабильна, вероятно небольшое снижение в перспективе.",
-        "forecast": [{"date": (date.today() + timedelta(days=i)).isoformat(),
-                      "price": 1000 + i * 10,
-                      "demand": 5 + i,
-                      "stock": 100 - i * 2} for i in range(30)],
-        "recommended_price": 1050,
-        "revenue_forecast": [{"date": (date.today() + timedelta(days=i)).isoformat(),
-                              "revenue": (1000 + i * 10) * (5 + i)} for i in range(30)],
-        "key_metrics": {"avg_price": 1020, "max_price": 1100, "min_price": 950, "volatility": 45},
-        "keywords": ["ключевое слово 1", "ключевое слово 2", "ключевое слово 3"],
-        "recommendations": "Рекомендуется улучшить описание и добавить больше изображений."
-    })
-
-
 def _build_fallback_report(goods_id: int, name: str, category: str, prices: List[float], ratings: List[float], reviews_counts: List[int]) -> Dict[str, Any]:
-    """Возвращает отчёт с заполнителями при ошибке."""
     today = date.today()
-    forecast = []
-    revenue_forecast = []
     base_price = prices[-1] if prices else 1000
     base_demand = 5
+    forecast = []
+    revenue = []
     for i in range(30):
         d = today + timedelta(days=i)
         price = base_price + i * 5
         demand = base_demand + i * 0.5
         forecast.append({"date": d.isoformat(), "price": price, "demand": demand, "stock": max(0, 100 - i * 3)})
-        revenue_forecast.append({"date": d.isoformat(), "revenue": price * demand})
+        revenue.append({"date": d.isoformat(), "revenue": price * demand})
 
     return {
         "goods_id": goods_id,
@@ -220,13 +208,32 @@ def _build_fallback_report(goods_id: int, name: str, category: str, prices: List
         "price_dynamic": "Цена стабильна",
         "forecast": forecast,
         "recommended_price": base_price * 1.05,
-        "revenue_forecast": revenue_forecast,
+        "revenue_forecast": revenue,
         "key_metrics": {
             "avg_price": sum(prices) / len(prices) if prices else base_price,
             "max_price": max(prices) if prices else base_price,
             "min_price": min(prices) if prices else base_price,
             "volatility": 0
         },
+        "advertising_spend_ratio_forecast": [{"date": (today + timedelta(days=i)).isoformat(), "value": [0.0, 0.0, 0.0]} for i in range(30)],
+        "leads_forecast": [{"date": (today + timedelta(days=i)).isoformat(), "value": [0.0, 0.0, 0.0]} for i in range(30)],
+        "ctr_forecast": [{"date": (today + timedelta(days=i)).isoformat(), "value": [0.0, 0.0, 0.0]} for i in range(30)],
+        "advertising_spend_ratio_description": (
+            "Качественная SEO-оптимизация и профессиональная инфографика снижают долю рекламных расходов (ad spend ratio) "
+            "за счёт повышения органической видимости и конверсии. Это подтверждается концепцией 'attribution modelling', "
+            "где улучшение качества контента увеличивает долю бесплатного трафика. В рамках недельного A/B-тестирования "
+            "следование планкам позволит получить статистически значимые данные о снижении ДРР."
+        ),
+        "leads_description": (
+            "Оптимизированные заголовки, описания и визуалы повышают conversion rate и качество лидов (lead quality). "
+            "Эффект объясняется улучшением соответствия запросам пользователей и повышением доверия к карточке. "
+            "A/B-тест с предложенными улучшениями покажет рост лидов на 15–25% при сохранении бюджета."
+        ),
+        "ctr_description": (
+            "Повышение click-through rate (CTR) достигается за счёт релевантных заголовков и привлекательных мета-описаний. "
+            "Это снижает стоимость клика (CPC) и улучшает общую эффективность рекламной кампании. "
+            "В условиях A/B-тестирования важно придерживаться планок, чтобы оценить реальный прирост CTR без искажающих факторов."
+        ),
         "keywords": [f"Купить {name}", f"{name} цена", "лучшая цена"],
         "recommendations": "Попробуйте улучшить карточку товара для повышения конверсии."
     }

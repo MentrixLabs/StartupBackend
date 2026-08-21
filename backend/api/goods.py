@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from db.db import async_session_maker
 from db.ozon.dao import OzonItemDAO, OzonItemHistoryDAO, OzonItemFeedbackDAO, OzonItemCategoryDAO
-from backend.schemas.goods import GoodsCreate, GoodsUpdate, GoodsOut
+from backend.schemas.goods import GoodsCreate, GoodsUpdate, GoodsOut, StockHistoryRequest, StockHistoryEntry
 from backend.core.dependencies import get_current_user
 from db.user.models import User
 from backend.services.parser import get_data_by_url
@@ -148,3 +148,30 @@ async def delete_goods(goods_id: int, current_user: User = Depends(get_current_u
         # Удаляем товар
         await OzonItemDAO.delete(id=goods_id)
         return None  # 204 No Content
+
+
+@router.post("/{goods_id}/stock-history", status_code=200)
+async def update_stock_history(
+    goods_id: int,
+    payload: StockHistoryRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Обновить или добавить записи об остатках товара на складе (fbs_count).
+    Принимает массив записей с датой и количеством.
+    """
+    async with async_session_maker() as session:
+        # Проверяем, что товар принадлежит пользователю
+        item = await OzonItemDAO.find_one_or_none(id=goods_id, user_id=current_user.id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Товар не найден или доступ запрещён")
+
+        # Обрабатываем каждую запись
+        for entry in payload.entries:
+            await OzonItemHistoryDAO.upsert_stock(
+                item_id=goods_id,
+                record_date=entry.record_date,
+                fbs_count=entry.fbs_count
+            )
+
+        return {"message": f"Обновлено {len(payload.entries)} записей истории остатков."}
