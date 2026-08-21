@@ -14,6 +14,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     tg_id = Column(BigInteger, unique=True, nullable=True)
     hashed_password = Column(String, nullable=False)
+    payments = relationship("PaymentTransaction", back_populates="user")
 
 
 class Profile(Base):
@@ -30,4 +31,3 @@ class Profile(Base):
     api_key_ozon = Column(String, unique=True)
     client_id_ozon = Column(Integer, unique=True)
     provider_id = Column(Integer, nullable=True)
-    payments = relationship("PaymentTransaction", back_populates="user")
