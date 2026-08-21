@@ -182,3 +182,76 @@ async def update_stock_history(
             )
 
         return {"message": f"Обновлено {len(payload.entries)} записей истории остатков."}
+
+
+@router.post("/{goods_id}/reparse")
+async def reparse_goods(
+    goods_id: int,
+    current_user: User = Depends(get_current_user),
+):
+    async with async_session_maker() as session:
+        item = await OzonItemDAO.find_one_or_none(id=goods_id, user_id=current_user.id)
+        if not item:
+            raise HTTPException(404, "Товар не найден или доступ запрещён")
+        
+        parsed_data = await get_data_by_url(item.url)
+        if not parsed_data.get("success"):
+            raise HTTPException(400, "Не удалось распарсить товар по указанному URL")
+        
+        product_data = parsed_data["product_data"]
+        
+        # Обновляем основные поля
+        await OzonItemDAO.update(
+            id=goods_id,
+            cardname=product_data.get("title", ""),
+            description=product_data.get("description", ""),
+            product_id=product_data.get("product_id"),
+            provider=product_data.get("provider"),
+            brand=product_data.get("brand"),
+            original_price=product_data.get("original_price"),
+            currency=product_data.get("currency"),
+            rating=product_data.get("rating"),
+            reviews_count=product_data.get("reviews_count"),
+            main_imgs=product_data.get("main_imgs", []),
+            desc_imgs=product_data.get("desc_imgs", [])
+        )
+        
+        # Категории – удаляем старые, добавляем новые
+        await OzonItemCategoryDAO.delete(item_id=goods_id)
+        category_name = product_data.get("category")
+        if category_name:
+            await OzonItemCategoryDAO.add(item_id=goods_id, category=category_name)
+        
+        # История – добавляем новую запись
+        price = product_data.get("price")
+        rating = product_data.get("rating")
+        reviews_count = product_data.get("reviews_count")
+        if price is not None or rating is not None or reviews_count is not None:
+            await OzonItemHistoryDAO.add(
+                item_id=goods_id,
+                record_date=datetime.now().date(),
+                price=price,
+                rating=rating,
+                reviews_count=reviews_count,
+                fbs_count=0
+            )
+        
+        # Отзывы – удаляем старые, добавляем новые
+        await OzonItemFeedbackDAO.delete(item_id=goods_id)
+        reviews = product_data.get("reviews", {})
+        for review_uuid, review_data in reviews.items():
+            review_date_str = review_data.get("review_date")
+            if review_date_str:
+                try:
+                    feedback_date = datetime.strptime(review_date_str, '%d.%m.%Y').date()
+                except ValueError:
+                    feedback_date = None
+            else:
+                feedback_date = None
+            await OzonItemFeedbackDAO.add(
+                item_id=goods_id,
+                feedback=review_data.get("review_text", ""),
+                feedback_date=feedback_date
+            )
+        
+        return {"message": "Товар успешно перепарсен", "goods_id": goods_id}

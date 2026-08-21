@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
 from sqlalchemy import select, func, and_, text, or_
 from db.db import async_session_maker
-from db.ozon.dao import OzonItemDAO, OzonItemHistoryDAO, OzonItemCategoryDAO, InfographicsDataDAO
+from db.ozon.dao import OzonItemDAO, OzonItemHistoryDAO, OzonItemCategoryDAO, InfographicsDataDAO, SeoDataDAO
 from backend.utils.GigaChatAPI import GigaChatModel
 from config import settings
 
@@ -70,6 +70,30 @@ async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
         has_generated = infographics and infographics.generated_images and len(infographics.generated_images) > 0
         has_enhanced = infographics and infographics.enhanced_images and len(infographics.enhanced_images) > 0
 
+        seo_generated = await SeoDataDAO.find_all(goods_id=goods.id)
+        if seo_generated:
+            seo_generated = seo_generated[-1]
+
+            generated_title = seo_generated.generated_title
+            generated_description = seo_generated.generated_description
+            generated_keywords = seo_generated.generated_keywords
+            summary = seo_generated.summary
+            # Новые поля
+            advertising_spend_ratio = seo_generated.advertising_spend_ratio  # массив [old, new]
+            leads = seo_generated.leads                   # массив [old, new]
+            ctr = seo_generated.ctr                     # массив [old, new]
+            adv_growth = advertising_spend_ratio[1] / advertising_spend_ratio[0] if advertising_spend_ratio[0] != 0 else 1.0
+            leads_growth = leads[1] / leads[0] if leads[0] != 0 else 1.0
+            ctr_growth = ctr[1] / ctr[0] if ctr[0] != 0 else 1.0
+        else:
+            generated_title = "Нет данных"
+            generated_description = "Нет данных"
+            generated_keywords = "Нет данных"
+            summary = "Нет данных"
+            adv_growth = 1.0
+            leads_growth = 1.0
+            ctr_growth = 1.0
+
         # Добавить в промпт информацию о наличии инфографики
         infographics_info = "Есть сгенерированные изображения" if has_generated else "Нет сгенерированных изображений"
         if has_enhanced:
@@ -77,8 +101,9 @@ async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
         else:
             infographics_info += ", улучшенные изображения отсутствуют"
     # 2. Формируем промпт для GigaChat
+    instructions = "Ты — аналитик маркетплейса с 20-летним опытом в e-commerce и цифровом маркетинге. Проанализируй данные товара и сгенерируй прогнозы на 30 дней."
     prompt = f"""
-    Ты — аналитик маркетплейса с опытом в e-commerce и цифровом маркетинге. Проанализируй данные товара и сгенерируй прогнозы на 30 дней.
+    {instructions}
 
     Данные товара:
     - Название: {name}
@@ -93,8 +118,16 @@ async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
     - Инфографика: {infographics_info}
     - Текущий остаток на складе: {current_stock if current_stock is not None else 'Неизвестно'}
     - История остатков: {list(zip(dates, fbs_counts)) if fbs_counts else 'Нет'}
+    - Новое сгенерированное SEO название товара: {generated_title}
+    - Новое сгенерированное SEO описание товара: {generated_description}
+    - Новые сгенерированные SEO ключевые слова товара: {generated_keywords}
+    - Новая сгенерированная сводка по SEO товара: {summary}
+    - Прогнозируемое увеличение доли рекламных расходлов за счёт сгенерированного SEO и инфографики товара: {adv_growth}
+    - Прогнозируемое увеличение количества лидов за счёт сгенерированного SEO и инфографики товара: {leads_growth}
+    - Прогнозируемое увеличение CTR за счёт сгенерированного SEO и инфографики товара: {ctr_growth}
 
     Твоя задача – построить прогнозы и дать рекомендации, используя экономические и маркетинговые концепции.
+    Если нет данных по SEO - скажи, что пользователю необходимо сгенерировать хотя бы одно SEO для подробной отчётности
 
     Сгенерируй JSON-ответ строго по следующей схеме. Все поля обязательны.
     Если данных недостаточно, используй разумные приближения на основе имеющейся информации.
@@ -103,26 +136,26 @@ async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
     "days_to_out_of_stock": "строка – прогноз, когда товар закончится (например, 'Товар закончится через 15 дней' или 'Недостаточно данных')",
     "price_dynamic": "строка – описание динамики цены на 30 дней (рост, падение, стабильность) с кратким обоснованием",
     "forecast": [
-        {"date": "YYYY-MM-DD", "price": число, "demand": число, "stock": число}
+        {{"date": "YYYY-MM-DD", "price": число, "demand": число, "stock": число}}
     ], // 30 записей, начиная с сегодня
     "recommended_price": число,
     "revenue_forecast": [
-        {"date": "YYYY-MM-DD", "revenue": число}
+        {{"date": "YYYY-MM-DD", "revenue": число}}
     ], // 30 записей
-    "key_metrics": {
+    "key_metrics": {{
         "avg_price": число,
         "max_price": число,
         "min_price": число,
         "volatility": число
-    },
+    }},
     "advertising_spend_ratio_forecast": [
-        {"date": "YYYY-MM-DD", "value": [число, число, число]}
+        {{"date": "YYYY-MM-DD", "value": [процент увеличения показателя относительно текущего показателя, процент увеличения показателя относительно текущего показателя, процент увеличения показателя относительно текущего показателя]}}
     ], // 30 записей, массив из трёх значений: [следование рекомендациям, бездействие, пересечение]
     "leads_forecast": [
-        {"date": "YYYY-MM-DD", "value": [число, число, число]}
+        {{"date": "YYYY-MM-DD", "value": [процент увеличения показателя относительно текущего показателя, процент увеличения показателя относительно текущего показателя, процент увеличения показателя относительно текущего показателя]}}
     ], // 30 записей, аналогично
     "ctr_forecast": [
-        {"date": "YYYY-MM-DD", "value": [число, число, число]}
+        {{"date": "YYYY-MM-DD", "value": [процент увеличения показателя относительно текущего показателя, процент увеличения показателя относительно текущего показателя, процент увеличения показателя относительно текущего показателя]}}
     ], // 30 записей, аналогично
     "advertising_spend_ratio_description": "строка – развёрнутое описание (на русском, но с использованием английских научных терминов), почему качественные SEO и инфографика снижают долю рекламных расходов по сравнению с текущей карточкой. Объясни механизм: улучшение органической видимости -> рост кликабельности -> снижение зависимости от платного трафика. Подчеркни, что в рамках недельного AB-тестирования важно следовать предложенным планкам для получения статистически значимых результатов.",
     "leads_description": "строка – аналогично, но про лиды: почему улучшенный контент увеличивает количество целевых лидов. Используй термины: conversion rate, lead quality, funnel efficiency, A/B testing significance.",
@@ -138,7 +171,7 @@ async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
     """
 
     try:
-        response_text = await gigachat_model.chat(prompt)
+        response_text = await gigachat_model.getResponseByPromt(prompt)
         result = json.loads(response_text)
 
         required_fields = (

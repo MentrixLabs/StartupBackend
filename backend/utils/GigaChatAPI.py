@@ -16,7 +16,6 @@ class GigaChatModel:
         )
 
     def getSEO(self, product_name, category, description, price) -> str:
-    
         prompt = f"""
             Ты — профессиональный копирайтер для маркетплейсов. Напиши SEO-оптимизированный контент для товара.
         
@@ -42,8 +41,7 @@ class GigaChatModel:
                 "CTR": [float(old), float(new)]
             }}
             """
-        instructions="You are a professional SEO manager, you write the most selling texts with the most relevant keywords to the product. Answer in Russian.",
-                
+               
         chat = Chat(
             model="GigaChat-3-Ultra",
             messages=[Messages(role=MessagesRole.USER, content=prompt)],
@@ -57,6 +55,27 @@ class GigaChatModel:
             # 2. Если нет Markdown, ищем первое полное JSON-объект
             json_match = re.search(r'(\{.*\})', content, re.DOTALL)
 
+        if json_match:
+            return json_match.group(1)  # возвращаем только JSON-строку
+        else:
+            # Если ничего не найдено, возвращаем как есть (можно выбросить ошибку)
+            raise ValueError("Не удалось извлечь JSON из ответа модели")
+
+    async def getResponseByPromt(self, prompt) -> str:
+
+        chat = Chat(
+            model="GigaChat-3-Ultra",
+            messages=[Messages(role=MessagesRole.USER, content=prompt)],
+        )
+    
+        response = self.client.chat(chat)
+        content = response.choices[0].message.content
+    
+        json_match = re.search(r'```json\s*(\{.*?\})\s*```', content, re.DOTALL)
+        if not json_match:
+            # 2. Если нет Markdown, ищем первое полное JSON-объект
+            json_match = re.search(r'(\{.*\})', content, re.DOTALL)
+    
         if json_match:
             return json_match.group(1)  # возвращаем только JSON-строку
         else:
