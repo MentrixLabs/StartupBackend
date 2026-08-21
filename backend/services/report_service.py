@@ -102,9 +102,9 @@ async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
     {{
       "days_to_out_of_stock": "строка (например, 'Товар закончится через 15 дней' или 'Недостаточно данных')",
       "price_dynamic": "строка (краткое описание динамики)",
-      "forecast": [{"date": "YYYY-MM-DD", "price": число, "demand": число, "stock": число}],
+      "forecast": [{{"date": "YYYY-MM-DD", "price": число, "demand": число, "stock": число}}],
       "recommended_price": число,
-      "revenue_forecast": [{"date": "YYYY-MM-DD", "revenue": число}],
+      "revenue_forecast": [{{"date": "YYYY-MM-DD", "revenue": число}}],
       "key_metrics": {{"avg_price": число, "max_price": число, "min_price": число, "volatility": число}},
       "keywords": ["ключевое слово1", "ключевое слово2", ...],
       "recommendations": "текст рекомендаций"

@@ -1,5 +1,0 @@
-alembic==1.19.0
-Mako==1.4.1
-MarkupSafe==3.0.3
-SQLAlchemy==2.0.51
-typing_extensions==4.16.0
