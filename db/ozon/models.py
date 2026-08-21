@@ -36,7 +36,7 @@ class OzonItemCategory(Base):
     __tablename__ = "ozon_item_categories"
 
     id = Column(Integer, primary_key=True, index=True)
-    item_id = Column(Integer, ForeignKey("ozon_items.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), nullable=False, ondelete="CASCADE")
     category = Column(String, nullable=False)
 
     item = relationship("OzonItem", back_populates="categories")
@@ -46,7 +46,7 @@ class OzonItemHistory(Base):
     __tablename__ = "ozon_item_history"
 
     id = Column(Integer, primary_key=True, index=True)
-    item_id = Column(Integer, ForeignKey("ozon_items.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), nullable=False, ondelete="CASCADE")
     record_date = Column(Date, nullable=False)
     price = Column(Float)
     rating = Column(Integer)
@@ -60,7 +60,7 @@ class OzonItemFeedback(Base):
     __tablename__ = "ozon_item_feedbacks"
 
     id = Column(Integer, primary_key=True, index=True)
-    item_id = Column(Integer, ForeignKey("ozon_items.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), nullable=False, ondelete="CASCADE")
     feedback = Column(Text)
     feedback_date = Column(Date)
 
@@ -69,7 +69,7 @@ class OzonItemFeedback(Base):
 class SeoData(Base):
     __tablename__ = "seo_data"
 
-    goods_id = Column(Integer, ForeignKey("ozon_items.id"), primary_key=True, nullable=False)
+    goods_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), primary_key=True, nullable=False)
     generated_title = Column(String(255))
     generated_description = Column(Text)
     generated_keywords = Column(ARRAY(String))
@@ -86,7 +86,7 @@ class SeoCompetitor(Base):
     __tablename__ = "seo_competitors"
 
     id = Column(Integer, primary_key=True, index=True)
-    goods_id = Column(Integer, ForeignKey("ozon_items.id"), nullable=False)
+    goods_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), nullable=False)
     competitor_title = Column(String(255), nullable=False)
     competitor_description = Column(Text, nullable=False)
     competitor_keywords = Column(ARRAY(String), nullable=False)
@@ -95,7 +95,7 @@ class SeoCompetitor(Base):
 class InfographicsData(Base):
     __tablename__ = "infographics_data"
 
-    goods_id = Column(Integer, ForeignKey("ozon_items.id"), primary_key=True, nullable=False)
+    goods_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), primary_key=True, nullable=False)
     generated_images = Column(ARRAY(String))   # массив URL/data-url сгенерированных изображений
     enhanced_images = Column(ARRAY(String))    # массив URL/data-url улучшенных изображений
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -108,7 +108,7 @@ class Report(Base):
     __tablename__ = "reports"
 
     id = Column(Integer, primary_key=True, index=True)
-    goods_id = Column(Integer, ForeignKey("ozon_items.id"), nullable=False)
+    goods_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 

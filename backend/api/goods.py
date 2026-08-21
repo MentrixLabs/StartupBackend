@@ -8,6 +8,9 @@ from backend.schemas.goods import GoodsCreate, GoodsUpdate, GoodsOut, StockHisto
 from backend.core.dependencies import get_current_user
 from db.user.models import User
 from backend.services.parser import get_data_by_url
+from logging import Logger
+
+logger = Logger(__name__)
 
 router = APIRouter()
 
@@ -146,7 +149,11 @@ async def delete_goods(goods_id: int, current_user: User = Depends(get_current_u
         if not item:
             raise HTTPException(status_code=404, detail="Товар не найден")
         # Удаляем товар
-        await OzonItemDAO.delete(id=goods_id)
+        try:
+            await OzonItemDAO.delete(id=goods_id)
+        except Exception as e:
+            logger.error(f"Delete error: {e}")
+            raise HTTPException(500, f"Ошибка удаления: {str(e)}")
         return None  # 204 No Content
 
 
