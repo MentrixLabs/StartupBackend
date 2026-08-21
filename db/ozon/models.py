@@ -36,7 +36,7 @@ class OzonItemCategory(Base):
     __tablename__ = "ozon_item_categories"
 
     id = Column(Integer, primary_key=True, index=True)
-    item_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), nullable=False, ondelete="CASCADE")
+    item_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), nullable=False)
     category = Column(String, nullable=False)
 
     item = relationship("OzonItem", back_populates="categories")
@@ -46,7 +46,7 @@ class OzonItemHistory(Base):
     __tablename__ = "ozon_item_history"
 
     id = Column(Integer, primary_key=True, index=True)
-    item_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), nullable=False, ondelete="CASCADE")
+    item_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), nullable=False)
     record_date = Column(Date, nullable=False)
     price = Column(Float)
     rating = Column(Integer)
@@ -60,7 +60,7 @@ class OzonItemFeedback(Base):
     __tablename__ = "ozon_item_feedbacks"
 
     id = Column(Integer, primary_key=True, index=True)
-    item_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), nullable=False, ondelete="CASCADE")
+    item_id = Column(Integer, ForeignKey("ozon_items.id", ondelete="CASCADE"), nullable=False)
     feedback = Column(Text)
     feedback_date = Column(Date)
 
@@ -124,7 +124,7 @@ class PaymentTransaction(Base):
     __tablename__ = "payment_transactions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     order_id = Column(String(64), unique=True, nullable=False)   # внутренний номер заказа
     provider_transaction_id = Column(String(64), nullable=True)  # ID транзакции у провайдера
     amount = Column(Float, nullable=False)
