@@ -41,7 +41,7 @@ async def generate_seo_for_goods(goods_id: int, user_id: int) -> Dict[str, Any]:
 
     # 2. Генерируем SEO
     try:
-        content = gigachat_generation_model.getSEO(name, category, description, price)
+        content = await gigachat_generation_model.getSEO(name, category, description, price)
         #content = generation_model.getSEObyYandex(name, category, description, price)
         result = json.loads(content)
 

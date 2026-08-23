@@ -1,4 +1,4 @@
-from gigachat import GigaChat
+from gigachat import GigaChat, AsyncGigaChat
 from gigachat.models import Chat, Messages, MessagesRole
 import re
 
@@ -7,15 +7,16 @@ from config import settings
 
 
 class GigaChatModel:
-    def __init__(self, credentials = settings.SBER_AUTHORIZATION_KEY, scope="GIGACHAT_API_PERS"):
-        self.client = GigaChat(
+    def __init__(self, credentials = settings.SBER_AUTHORIZATION_KEY, scope="GIGACHAT_API_PERS", timeout = 200):
+        self.client = AsyncGigaChat(
             base_url="https://api.giga.chat/v1",
             credentials=credentials,
             scope=scope,
             verify_ssl_certs=False,
+            timeout = timeout
         )
 
-    def getSEO(self, product_name, category, description, price) -> str:
+    async def getSEO(self, product_name, category, description, price) -> str:
         prompt = f"""
             Ты — профессиональный копирайтер для маркетплейсов. Напиши SEO-оптимизированный контент для товара.
         
