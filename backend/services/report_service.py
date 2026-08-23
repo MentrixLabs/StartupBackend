@@ -171,7 +171,7 @@ async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
     """
 
     try:
-        response_text = await gigachat_model.getResponseByPromt(prompt)
+        response_text = gigachat_model.getResponseByPromt(prompt)
         result = json.loads(response_text)
 
         required_fields = (

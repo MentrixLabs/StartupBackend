@@ -1,4 +1,4 @@
-from gigachat import GigaChat, AsyncGigaChat
+from gigachat import GigaChat
 from gigachat.models import Chat, Messages, MessagesRole
 import re
 
@@ -8,7 +8,7 @@ from config import settings
 
 class GigaChatModel:
     def __init__(self, credentials = settings.SBER_AUTHORIZATION_KEY, scope="GIGACHAT_API_PERS", timeout = 200):
-        self.client = AsyncGigaChat(
+        self.client = GigaChat(
             base_url="https://api.giga.chat/v1",
             credentials=credentials,
             scope=scope,
@@ -16,7 +16,7 @@ class GigaChatModel:
             timeout = timeout
         )
 
-    async def getSEO(self, product_name, category, description, price) -> str:
+    def getSEO(self, product_name, category, description, price) -> str:
         prompt = f"""
             Ты — профессиональный копирайтер для маркетплейсов. Напиши SEO-оптимизированный контент для товара.
         
@@ -62,7 +62,7 @@ class GigaChatModel:
             # Если ничего не найдено, возвращаем как есть (можно выбросить ошибку)
             raise ValueError("Не удалось извлечь JSON из ответа модели")
 
-    async def getResponseByPromt(self, prompt) -> str:
+    def getResponseByPromt(self, prompt) -> str:
 
         chat = Chat(
             model="GigaChat-3-Ultra",
