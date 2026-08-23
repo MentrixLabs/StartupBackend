@@ -27,3 +27,4 @@ transformers
 torch
 accelerate
 reportlab
+yookassa

@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     SBER_SCOPE: str = ""
     SBER_AUTHORIZATION_KEY: str = ""
     SBER_CLIENT_SECRET: str = ""
+    YOOKASSA_SHOP_ID: str = ""
+    YOOKASSA_SECRET_KEY: str = ""
+    YOOKASSA_RETURN_URL: str = "https://mentrixlabs.github.io/payment-success"
 
     @property
     def DATABASE_URL(self) -> str:
