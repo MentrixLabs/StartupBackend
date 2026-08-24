@@ -39,6 +39,15 @@ class YooKassaProvider:
         user_id: int,
         capture: bool = False,
     ) -> Dict[str, Any]:
+        # Если включена заглушка – возвращаем фиктивный ответ
+        if settings.PAYMENT_MOCK_ENABLED:
+            logger.info(f"MOCK: Creating payment for order {order_id}, amount {amount}")
+            return {
+                "payment_id": f"mock-{uuid.uuid4().hex[:8]}",
+                "confirmation_url": "https://yoomoney.ru/pay",  # тестовая ссылка
+                "status": "pending",
+                "created_at": datetime.utcnow().isoformat(),
+            }
         """
         Создает платеж в ЮKassa.
         """

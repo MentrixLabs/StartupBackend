@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+import os
 
 class Settings(BaseSettings):
     DB_HOST: str
@@ -24,6 +25,7 @@ class Settings(BaseSettings):
     YOOKASSA_SHOP_ID: str = ""
     YOOKASSA_SECRET_KEY: str = ""
     YOOKASSA_RETURN_URL: str = "https://mentrixlabs.github.io/payment-success"
+    PAYMENT_MOCK_ENABLED: bool = os.getenv("PAYMENT_MOCK_ENABLED", "False").lower() == "true"
 
     @property
     def DATABASE_URL(self) -> str:
