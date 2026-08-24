@@ -14,6 +14,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     tg_id = Column(BigInteger, unique=True, nullable=True)
     hashed_password = Column(String, nullable=False)
+    plan = Column(String(20), default='free', nullable=False)
     payments = relationship("PaymentTransaction", back_populates="user")
 
 

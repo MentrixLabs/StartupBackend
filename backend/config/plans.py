@@ -8,6 +8,7 @@ PLANS: Dict[str, Dict[str, Any]] = {
         "max_seo_per_day": 2,
         "max_infographics_per_day": 1,
         "max_infographics_per_request": 1,
+        "report_cooldown_days": 7,   # 1 раз в неделю
         # Фичи (доступность)
         "support_level": "email",          # email, phone, full
         "api_access": False,
@@ -29,6 +30,7 @@ PLANS: Dict[str, Dict[str, Any]] = {
         "max_seo_per_day": 50,
         "max_infographics_per_day": 20,
         "max_infographics_per_request": 20,
+        "report_cooldown_days": 3,   # 1 раз в 3 дня
         "support_level": "phone",
         "api_access": False,
         "priority_support": False,
@@ -48,6 +50,7 @@ PLANS: Dict[str, Dict[str, Any]] = {
         "max_seo_per_day": float('inf'),
         "max_infographics_per_day": 50,
         "max_infographics_per_request": 50,
+        "report_cooldown_days": 1,   # 1 раз в день
         "support_level": "full",
         "api_access": True,
         "priority_support": True,

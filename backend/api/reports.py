@@ -10,7 +10,8 @@ from backend.core.dependencies import get_current_user
 from db.user.models import User
 from db.ozon.dao import ReportDAO, OzonItemDAO
 from db.db import async_session_maker
-from backend.services.report_service import generate_report_data
+from backend.services.report_service import generate_report_data, can_generate_report
+from backend.config.plans import get_plan_details
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +106,11 @@ async def generate_report(
     req: ReportCreateRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
-):
+):  
+    # backend/api/reports.py (внутри generate_report)
+    if not await can_generate_report(req.goods_id, current_user.id, current_user.plan):
+        cooldown = get_plan_details(current_user.plan)["report_cooldown_days"]
+        raise HTTPException(403, f"Отчёт для этого товара можно создавать не чаще 1 раза в {cooldown} дней.")
     try:
         goods = await OzonItemDAO.find_one_or_none(id=req.goods_id, user_id=current_user.id)
         if not goods:

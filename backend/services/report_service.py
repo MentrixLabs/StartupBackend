@@ -1,16 +1,18 @@
 # backend/services/report_service.py
 import json
 import logging
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
-from sqlalchemy import select, func, and_, text, or_
+from sqlalchemy import select, func, and_, text, or_, desc
 from db.db import async_session_maker
 from db.ozon.dao import OzonItemDAO, OzonItemHistoryDAO, OzonItemCategoryDAO, InfographicsDataDAO, SeoDataDAO
+from db.ozon.models import Report
 from backend.utils.GigaChatAPI import GigaChatModel
 from config import settings
+from backend.config.plans import get_plan_details
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)\
 
 # Инициализация GigaChat (используем тот же экземпляр, что и для SEO)
 gigachat_model = GigaChatModel(
@@ -270,3 +272,24 @@ def _build_fallback_report(goods_id: int, name: str, category: str, prices: List
         "keywords": [f"Купить {name}", f"{name} цена", "лучшая цена"],
         "recommendations": "Попробуйте улучшить карточку товара для повышения конверсии."
     }
+
+
+async def can_generate_report(goods_id: int, user_id: int, plan: str) -> bool:
+    """
+    Проверяет, можно ли создать новый отчёт для товара.
+    Разрешено не чаще, чем указано в плане (cooldown).
+    """
+    cooldown = get_plan_details(plan).get("report_cooldown_days", 7)
+    async with async_session_maker() as session:
+        stmt = (
+            select(Report)
+            .where(Report.goods_id == goods_id, Report.user_id == user_id)
+            .order_by(desc(Report.created_at))
+            .limit(1)
+        )
+        result = await session.execute(stmt)
+        last = result.scalar_one_or_none()
+        if not last:
+            return True
+        delta = datetime.utcnow() - last.created_at
+        return delta.days >= cooldown
