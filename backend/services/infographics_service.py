@@ -111,9 +111,9 @@ async def generate_infographics(goods_id: int, user_id: int, count: int = 4) -> 
         existing = await InfographicsDataDAO.find_one_or_none(goods_id=goods_id)
         data = {"generated_images": images}
         if existing:
-            await InfographicsDataDAO.update(goods_id=goods_id, **data)
+            await InfographicsDataDAO.update(existing.id, **data)
         else:
-            await InfographicsDataDAO.add(goods_id=goods_id, **data)
+            await InfographicsDataDAO.add(goods_id=goods_id, generated_images=[], enhanced_images=[data_url])
 
     return images
 

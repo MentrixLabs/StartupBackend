@@ -1,6 +1,7 @@
 # backend/services/report_service.py
 import json
 import logging
+import re
 from datetime import date, timedelta, datetime
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
@@ -12,7 +13,7 @@ from backend.utils.GigaChatAPI import GigaChatModel
 from config import settings
 from backend.config.plans import get_plan_details
 
-logger = logging.getLogger(__name__)\
+logger = logging.getLogger(__name__)
 
 # Инициализация GigaChat (используем тот же экземпляр, что и для SEO)
 gigachat_model = GigaChatModel(
@@ -171,10 +172,15 @@ async def generate_report_data(goods_id: int, user_id: int) -> Dict[str, Any]:
 
     Ответ должен быть только JSON, без лишнего текста.
     """
-
+    prompt += "\n\nОТВЕТ ДОЛЖЕН БЫТЬ ТОЛЬКО JSON, БЕЗ ЛИШНИХ ПОЯСНЕНИЙ И БЕЗ МАРКДАУН-РАЗМЕТКИ (без ```json)."
     try:
-        response_text = gigachat_model.getResponseByPromt(prompt)
-        result = json.loads(response_text)
+        response_text = await gigachat_model.getResponseByPromt(prompt)
+        clean_json = extract_json_from_response(response_text)
+        try:
+            result = json.loads(clean_json)
+        except json.JSONDecodeError as e:
+            logger.error(f"Не удалось распарсить JSON из ответа: {e}\nОтвет: {response_text[:500]}")
+            return _build_fallback_report(...)
 
         required_fields = (
             "days_to_out_of_stock", "price_dynamic", "forecast", "recommended_price",
@@ -293,3 +299,21 @@ async def can_generate_report(goods_id: int, user_id: int, plan: str) -> bool:
             return True
         delta = datetime.utcnow() - last.created_at
         return delta.days >= cooldown
+
+def extract_json_from_response(text: str) -> str:
+    """
+    Пытается извлечь JSON из текста ответа GigaChat.
+    Ищет блок ```json ... ``` или любой объект/массив в фигурных/квадратных скобках.
+    """
+    # Ищем блок с кодом JSON
+    match = re.search(r'```json\s*(\{.*?\})\s*```', text, re.DOTALL)
+    if match:
+        return match.group(1)
+
+    # Ищем первый полный JSON-объект
+    match = re.search(r'(\{.*\})', text, re.DOTALL)
+    if match:
+        return match.group(1)
+
+    # Если ничего не найдено, возвращаем исходный текст (он может быть JSON, но без форматирования)
+    return text

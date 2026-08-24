@@ -71,16 +71,16 @@ async def enhance_goods_images(goods_id: int, user_id: int) -> dict:
         img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
         data_url = f"data:image/webp;base64,{img_base64}"
 
-        async with async_session_maker() as session:
-            existing = await InfographicsDataDAO.find_one_or_none(goods_id=goods_id)
-            data = {"enhanced_images": [data_url]}  # список, т.к. может быть несколько
-            if existing:
-                await InfographicsDataDAO.update(goods_id=goods_id, **data)
-            else:
-                # если записи нет, создаём с пустым generated_images и enhanced_images
-                await InfographicsDataDAO.add(goods_id=goods_id, generated_images=[], enhanced_images=[data_url])
+    async with async_session_maker() as session:
+        existing = await InfographicsDataDAO.find_one_or_none(goods_id=goods_id)
+        data = {"enhanced_images": [data_url]}  # список, т.к. может быть несколько
+        if existing:
+            await InfographicsDataDAO.update(goods_id=goods_id, **data)
+        else:
+            # если записи нет, создаём с пустым generated_images и enhanced_images
+            await InfographicsDataDAO.add(goods_id=goods_id, generated_images=[], enhanced_images=[data_url])
 
-        return {"enhanced": [data_url]}
+    return {"enhanced": [data_url]}
 
 
 def make_collage(images, cols=2):
