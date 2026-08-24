@@ -39,13 +39,20 @@ async def generate_infographics_router(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка генерации инфографики: {str(e)}")
 
-@router.post("/enhance")
+@router.post("/enhance", response_model=InfographicsResponse)
 async def enhance_infographics_router(
-    goods_id: int,
+    request: InfographicsRequest,
     current_user: User = Depends(get_current_user)
 ):
-    """Возвращает улучшенное изображение для товара (коллаж + текст)."""
-    result = await enhance_goods_images(goods_id, current_user.id)
+    """
+    Улучшает существующие изображения товара (коллаж + текст).
+    Проверяет лимиты на количество инфографик в день.
+    """
+    # Проверка лимитов (count=1, так как улучшаем одно изображение)
+    await check_limits(current_user.id, "generate_infographics", extra={"count": 1})
+    
+    # Вызов сервиса улучшения
+    result = await enhance_goods_images(request.goods_id, current_user.id)
     return result
 
 @router.get("/{goods_id}")

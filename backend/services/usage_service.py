@@ -7,6 +7,10 @@ from db.db import async_session_maker
 from db.ozon.models import OzonItem, SeoData, InfographicsData
 from db.user.models import User
 from backend.config.plans import get_plan_limits, get_plan_details
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 async def get_user_usage(user_id: int) -> Dict[str, Any]:
     """
@@ -34,7 +38,7 @@ async def get_user_usage(user_id: int) -> Dict[str, Any]:
             .select_from(SeoData)
             .join(OzonItem, OzonItem.id == SeoData.goods_id)
             .where(OzonItem.user_id == user_id)
-            .where(SeoData.created_at >= start_of_day)
+            .where(func.date(SeoData.created_at) == today)
         )
         seo_today = await session.scalar(seo_today_stmt) or 0
 
@@ -44,7 +48,7 @@ async def get_user_usage(user_id: int) -> Dict[str, Any]:
             .select_from(InfographicsData)
             .join(OzonItem, OzonItem.id == InfographicsData.goods_id)
             .where(OzonItem.user_id == user_id)
-            .where(InfographicsData.created_at >= start_of_day)
+            .where(func.date(InfographicsData.created_at) == today)
         )
         infographics_today = await session.scalar(infographics_today_stmt) or 0
 
@@ -62,8 +66,11 @@ async def check_limits(user_id: int, action: str, extra: Dict[str, Any] = None) 
     Проверяет, не превышен ли лимит для указанного действия.
     Выбрасывает HTTPException 403 с сообщением о превышении.
     """
+    logger.info(f"check_limits вызвана для user_id={user_id}, action={action}")
     usage = await get_user_usage(user_id)
+    logger.info(f"usage: {usage}")
     plan = usage["plan"]
+    logger.info(f"plan: {plan}")
     limits = get_plan_limits(plan)
 
     if action == "add_goods":
