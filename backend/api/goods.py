@@ -9,6 +9,8 @@ from backend.core.dependencies import get_current_user
 from db.user.models import User
 from backend.services.parser import get_data_by_url
 from logging import Logger
+from backend.services.usage_service import check_limits
+
 
 logger = Logger(__name__)
 
@@ -71,6 +73,7 @@ async def get_goods_by_id(goods_id: int, current_user: User = Depends(get_curren
 
 @router.post("", response_model=GoodsOut, status_code=status.HTTP_201_CREATED)
 async def create_goods(goods: GoodsCreate, current_user: User = Depends(get_current_user)):
+    await check_limits(current_user.id, "add_goods")
     async with async_session_maker() as session:
         goods_url = goods.url
         parsed_data = await get_data_by_url(goods_url)

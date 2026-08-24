@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from backend.api import auth, goods, seo, infographics, reports, stats, payment
+from backend.api import auth, goods, seo, infographics, reports, stats, payment, user
 from db.db import engine
 from db.dao.base import BaseDAO
 
@@ -32,7 +32,7 @@ app.include_router(infographics.router, prefix="/infographics", tags=["infograph
 app.include_router(reports.router)
 app.include_router(stats.router)
 app.include_router(payment.router)
-
+app.include_router(user.router)
 
 @app.get("/")
 async def root():

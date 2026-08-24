@@ -9,6 +9,8 @@ from backend.services.infographics_service import generate_infographics
 from backend.services.image_enhancement_service import enhance_goods_images
 from db.ozon.dao import InfographicsDataDAO
 from db.db import async_session_maker
+from backend.services.usage_service import check_limits
+
 
 router = APIRouter()
 
@@ -24,6 +26,7 @@ async def generate_infographics_router(
     request: InfographicsRequest,
     current_user: User = Depends(get_current_user)
 ):
+    await check_limits(current_user.id, "generate_infographics", extra={"count": request.count})
     try:
         images = await generate_infographics(
             goods_id=request.goods_id,

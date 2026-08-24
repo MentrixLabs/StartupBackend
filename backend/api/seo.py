@@ -6,6 +6,7 @@ from db.ozon.dao import SeoCompetitorDAO, SeoDataDAO
 from db.db import async_session_maker
 from backend.services.seo_service import generate_seo_for_goods
 from backend.schemas.goods import SeoHistoryResponse
+from backend.services.usage_service import check_limits
 
 from typing import List
 
@@ -24,6 +25,7 @@ class SeoResponse(BaseModel):
 
 @router.post("/generate", response_model=SeoResponse)
 async def generate_seo(request: SeoRequest, current_user: User = Depends(get_current_user)):
+    await check_limits(current_user.id, "generate_seo")
     result = await generate_seo_for_goods(goods_id=request.goods_id, user_id=current_user.id)
     if not result:
         raise HTTPException(status_code=404, detail="Goods not found")
