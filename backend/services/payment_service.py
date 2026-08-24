@@ -11,11 +11,8 @@ from db.db import async_session_maker
 from db.ozon.dao import PaymentTransactionDAO
 from config import settings
 
-# Импортируем клиент ЮKassa
+# Импорты из библиотеки yookassa
 from yookassa import Configuration, Payment, Refund, Receipt
-from yookassa.domain.response.payment_response import PaymentResponse
-from yookassa.domain.response.refund_response import RefundResponse
-from yookassa.domain.response.receipt_response import ReceiptResponse
 from yookassa.domain.models.amount import Amount
 from yookassa.domain.request.payment_request import PaymentRequest
 from yookassa.domain.request.refund_request import RefundRequest
@@ -29,19 +26,9 @@ def configure_yookassa():
     Configuration.account_id = settings.YOOKASSA_SHOP_ID
     Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
 
-# Вызываем конфигурацию при импорте (или можно вызвать в main.py)
 configure_yookassa()
 
 class YooKassaProvider:
-    async def create_payment(self, amount: float, description: str, order_id: str, user_id: int) -> Dict[str, Any]:
-        # Имитация успешного создания платежа
-        return {
-            "payment_id": f"test-{uuid.uuid4().hex[:8]}",
-            "confirmation_url": "https://yoomoney.ru/pay",  # тестовая ссылка
-            "status": "pending",
-        }
-    
-class TrueYooKassaProvider:
     """Реализация платежного провайдера ЮKassa."""
 
     async def create_payment(
@@ -50,16 +37,16 @@ class TrueYooKassaProvider:
         description: str,
         order_id: str,
         user_id: int,
-        capture: bool = False,  # True – одностадийная оплата, False – двухстадийная
+        capture: bool = False,
     ) -> Dict[str, Any]:
         """
         Создает платеж в ЮKassa.
         """
-        # Формируем запрос
         payment_request = PaymentRequest()
         payment_request.amount = Amount(value=amount, currency="RUB")
         payment_request.description = description
-        payment_request.capture = capture  # если False, нужно будет подтверждать
+        payment_request.capture = capture
+        # Используем словарь, а не класс Confirmation (совместимо со всеми версиями)
         payment_request.confirmation = {
             "type": "redirect",
             "return_url": settings.YOOKASSA_RETURN_URL or "https://mentrixlabs.github.io/payment-success"
@@ -69,7 +56,6 @@ class TrueYooKassaProvider:
             "user_id": str(user_id),
         }
 
-        # Создаем платеж (синхронный вызов, поэтому оборачиваем в to_thread)
         import asyncio
         payment = await asyncio.to_thread(Payment.create, payment_request, uuid.uuid4())
 
@@ -81,7 +67,6 @@ class TrueYooKassaProvider:
         }
 
     async def capture_payment(self, payment_id: str, amount: float = None) -> Dict[str, Any]:
-        """Подтверждает платеж (для двухстадийной оплаты)."""
         import asyncio
         if amount is not None:
             capture_amount = Amount(value=amount, currency="RUB")
@@ -91,13 +76,11 @@ class TrueYooKassaProvider:
         return {"status": payment.status, "captured_at": payment.captured_at}
 
     async def cancel_payment(self, payment_id: str) -> Dict[str, Any]:
-        """Отменяет платеж (только в статусе waiting_for_capture)."""
         import asyncio
         payment = await asyncio.to_thread(Payment.cancel, payment_id, uuid.uuid4())
         return {"status": payment.status}
 
     async def get_payment_info(self, payment_id: str) -> Dict[str, Any]:
-        """Получает информацию о платеже."""
         import asyncio
         payment = await asyncio.to_thread(Payment.find_one, payment_id)
         return {
@@ -119,7 +102,6 @@ class TrueYooKassaProvider:
         amount: float,
         description: str = "Возврат средств",
     ) -> Dict[str, Any]:
-        """Создает возврат по платежу."""
         import asyncio
         refund_request = RefundRequest()
         refund_request.payment_id = payment_id
@@ -135,10 +117,6 @@ class TrueYooKassaProvider:
         items: list,
         settlement_type: str = "cashless",
     ) -> Dict[str, Any]:
-        """
-        Создает чек для платежа.
-        items: список словарей с полями description, quantity, amount, vat_code.
-        """
         import asyncio
         receipt_items = []
         for item in items:
@@ -162,10 +140,6 @@ class TrueYooKassaProvider:
         return {"receipt_id": receipt.id, "status": receipt.status}
 
     async def handle_webhook(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Обрабатывает входящие уведомления от ЮKassa.
-        Обновляет статус транзакции в нашей БД.
-        """
         event = payload.get("event")
         if not event:
             raise HTTPException(400, "Missing event field")
@@ -182,7 +156,6 @@ class TrueYooKassaProvider:
             logger.error("order_id not found in metadata")
             return {"status": "error", "message": "order_id missing"}
 
-        # Обновляем статус в БД
         async with async_session_maker() as session:
             transaction = await PaymentTransactionDAO.find_one_or_none(order_id=order_id)
             if not transaction:
@@ -205,7 +178,7 @@ class TrueYooKassaProvider:
     def _map_yookassa_status(yk_status: str) -> str:
         mapping = {
             "pending": "pending",
-            "waiting_for_capture": "pending",  # для нас пока pending
+            "waiting_for_capture": "pending",
             "succeeded": "succeeded",
             "canceled": "canceled",
         }
@@ -216,17 +189,11 @@ class TrueYooKassaProvider:
 payment_provider = YooKassaProvider()
 
 
-# --- Публичные функции сервиса (используются в API) ---
+# --- Публичные функции (используются в API) ---
 
-async def create_payment(
-    user_id: int,
-    amount: float,
-    description: str = "Оплата услуги",
-) -> Dict[str, Any]:
-    """Создает платеж и сохраняет транзакцию в БД."""
+async def create_payment(user_id: int, amount: float, description: str = "Оплата услуги") -> Dict[str, Any]:
     order_id = f"ORDER-{user_id}-{uuid.uuid4().hex[:8]}"
 
-    # Сохраняем транзакцию со статусом pending
     async with async_session_maker() as session:
         await PaymentTransactionDAO.add(
             user_id=user_id,
@@ -242,9 +209,8 @@ async def create_payment(
             description=description,
             order_id=order_id,
             user_id=user_id,
-            capture=False,  # двухстадийная оплата (холдирование)
+            capture=False,
         )
-        # Обновляем provider_transaction_id
         async with async_session_maker() as session:
             transaction = await PaymentTransactionDAO.find_one_or_none(order_id=order_id)
             if transaction:
@@ -268,7 +234,6 @@ async def create_payment(
 
 
 async def capture_payment(order_id: str, user_id: int) -> Dict[str, Any]:
-    """Подтверждает платеж (списывает холдированную сумму)."""
     async with async_session_maker() as session:
         transaction = await PaymentTransactionDAO.find_one_or_none(order_id=order_id, user_id=user_id)
         if not transaction:
@@ -281,7 +246,6 @@ async def capture_payment(order_id: str, user_id: int) -> Dict[str, Any]:
 
     try:
         result = await payment_provider.capture_payment(payment_id)
-        # Обновляем статус
         async with async_session_maker() as session:
             await PaymentTransactionDAO.update(
                 transaction.id,
@@ -295,7 +259,6 @@ async def capture_payment(order_id: str, user_id: int) -> Dict[str, Any]:
 
 
 async def cancel_payment(order_id: str, user_id: int) -> Dict[str, Any]:
-    """Отменяет платеж (если он в статусе waiting_for_capture)."""
     async with async_session_maker() as session:
         transaction = await PaymentTransactionDAO.find_one_or_none(order_id=order_id, user_id=user_id)
         if not transaction:
@@ -320,7 +283,7 @@ async def cancel_payment(order_id: str, user_id: int) -> Dict[str, Any]:
         raise HTTPException(500, f"Cancel failed: {str(e)}")
 
 
-async def get_payment_status(order_id: str, user_id: int) -> Dict[str, Any]:
+async def get_transaction_status(order_id: str, user_id: int) -> Dict[str, Any]:
     """Получить статус транзакции из БД."""
     async with async_session_maker() as session:
         transaction = await PaymentTransactionDAO.find_one_or_none(order_id=order_id, user_id=user_id)
@@ -336,17 +299,10 @@ async def get_payment_status(order_id: str, user_id: int) -> Dict[str, Any]:
 
 
 async def handle_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Обработчик вебхука от ЮKassa."""
     return await payment_provider.handle_webhook(payload)
 
 
-async def create_refund(
-    order_id: str,
-    user_id: int,
-    amount: float,
-    description: str = "Возврат средств",
-) -> Dict[str, Any]:
-    """Создает возврат по платежу."""
+async def create_refund(order_id: str, user_id: int, amount: float, description: str = "Возврат средств") -> Dict[str, Any]:
     async with async_session_maker() as session:
         transaction = await PaymentTransactionDAO.find_one_or_none(order_id=order_id, user_id=user_id)
         if not transaction:
@@ -359,7 +315,6 @@ async def create_refund(
 
     try:
         result = await payment_provider.create_refund(payment_id, amount, description)
-        # Можно сохранить refund_id в отдельную таблицу, но пока просто логируем
         logger.info(f"Refund created for payment {payment_id}: {result}")
         return result
     except Exception as e:
