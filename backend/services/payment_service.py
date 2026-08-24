@@ -17,7 +17,6 @@ from yookassa.domain.response.payment_response import PaymentResponse
 from yookassa.domain.response.refund_response import RefundResponse
 from yookassa.domain.response.receipt_response import ReceiptResponse
 from yookassa.domain.models.amount import Amount
-from yookassa.domain.models.confirmation import Confirmation
 from yookassa.domain.request.payment_request import PaymentRequest
 from yookassa.domain.request.refund_request import RefundRequest
 from yookassa.domain.request.receipt_request import ReceiptRequest
@@ -61,9 +60,10 @@ class TrueYooKassaProvider:
         payment_request.amount = Amount(value=amount, currency="RUB")
         payment_request.description = description
         payment_request.capture = capture  # если False, нужно будет подтверждать
-        payment_request.confirmation = Confirmation(
-            return_url=settings.YOOKASSA_RETURN_URL or "https://mentrixlabs.github.io/payment-success"
-        )
+        payment_request.confirmation = {
+            "type": "redirect",
+            "return_url": settings.YOOKASSA_RETURN_URL or "https://mentrixlabs.github.io/payment-success"
+        }
         payment_request.metadata = {
             "order_id": order_id,
             "user_id": str(user_id),
