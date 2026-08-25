@@ -82,13 +82,22 @@ async def check_limits(user_id: int, action: str, extra: Dict[str, Any] = None) 
         if usage["seo_today"] >= max_seo:
             raise HTTPException(403, f"Превышен дневной лимит SEO-генераций ({max_seo}) для тарифа '{plan}'.")
     elif action == "generate_infographics":
+        # Для платных тарифов действует дневной лимит
         max_inf = limits["max_infographics_per_day"]
         if usage["infographics_today"] >= max_inf:
             raise HTTPException(403, f"Превышен дневной лимит инфографики ({max_inf}) для тарифа '{plan}'.")
-        # Проверка количества изображений в одном запросе (если передано)
         if extra and "count" in extra:
             max_per_req = limits.get("max_infographics_per_request", max_inf)
             if extra["count"] > max_per_req:
                 raise HTTPException(403, f"За один запрос можно создать не более {max_per_req} изображений (ваш тариф '{plan}').")
+    
+    elif action == "enhance_infographics":
+        max_enhance = limits["max_enhance_per_day"]
+        if usage["infographics_today"] >= max_enhance:
+            raise HTTPException(403, f"Превышен дневной лимит улучшений ({max_enhance}) для тарифа '{plan}'.")
+        if extra and "count" in extra:
+            max_per_req = limits.get("max_enhance_per_request", max_enhance)
+            if extra["count"] > max_per_req:
+                raise HTTPException(403, f"За один запрос можно улучшить не более {max_per_req} изображений (ваш тариф '{plan}').")
     else:
         raise ValueError(f"Неизвестное действие: {action}")

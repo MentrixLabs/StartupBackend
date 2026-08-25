@@ -21,6 +21,13 @@ class InfographicsRequest(BaseModel):
 class InfographicsResponse(BaseModel):
     images: List[str]
 
+class InfographicsResponse(BaseModel):
+    images: List[str]
+
+class EnhanceResponse(BaseModel):
+    enhanced: List[str]
+
+
 @router.post("/generate", response_model=InfographicsResponse)
 async def generate_infographics_router(
     request: InfographicsRequest,
@@ -49,7 +56,7 @@ async def enhance_infographics_router(
     Проверяет лимиты на количество инфографик в день.
     """
     # Проверка лимитов (count=1, так как улучшаем одно изображение)
-    await check_limits(current_user.id, "generate_infographics", extra={"count": 1})
+    await check_limits(current_user.id, "enhance_infographics", extra={"count": request.count})
     
     # Вызов сервиса улучшения
     result = await enhance_goods_images(request.goods_id, current_user.id)
