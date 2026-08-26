@@ -119,34 +119,49 @@ class YooKassaProvider:
         refund = await asyncio.to_thread(Refund.create, refund_request, uuid.uuid4())
         return {"refund_id": refund.id, "status": refund.status, "created_at": refund.created_at}
 
+    # backend/services/payment_service.py (дополнение)
+
     async def create_receipt(
-        self,
-        payment_id: str,
-        email: str,
+        order_id: str,
+        user_id: int,
         items: list,
-        settlement_type: str = "cashless",
+        email: str
     ) -> Dict[str, Any]:
-        import asyncio
-        receipt_items = []
-        for item in items:
-            receipt_item = ReceiptItem()
-            receipt_item.description = item["description"]
-            receipt_item.quantity = item["quantity"]
-            receipt_item.amount = Amount(value=item["amount"], currency="RUB")
-            receipt_item.vat_code = item.get("vat_code", 1)
-            receipt_items.append(receipt_item)
+        """
+        Создаёт фискальный чек для успешного платежа.
+        Транзакция должна иметь статус 'succeeded'.
+        """
+        async with async_session_maker() as session:
+            transaction = await PaymentTransactionDAO.find_one_or_none(order_id=order_id, user_id=user_id)
+            if not transaction:
+                raise HTTPException(404, "Transaction not found")
+            if transaction.status != "succeeded":
+                raise HTTPException(400, "Transaction not succeeded, cannot create receipt")
+            payment_id = transaction.provider_transaction_id
+            if not payment_id:
+                raise HTTPException(400, "No provider transaction id")
 
-        customer = ReceiptCustomer()
-        customer.email = email
+        try:
+            # Подготавливаем данные для чека в формате, ожидаемом провайдером
+            receipt_items = []
+            for item in items:
+                receipt_items.append({
+                    "description": item["description"],
+                    "quantity": item["quantity"],
+                    "amount": item["amount"],
+                    "vat_code": item.get("vat_code", 1)
+                })
 
-        receipt_request = ReceiptRequest()
-        receipt_request.payment_id = payment_id
-        receipt_request.items = receipt_items
-        receipt_request.customer = customer
-        receipt_request.settlements = [{"type": settlement_type, "amount": Amount(value=sum(i["amount"] * i["quantity"] for i in items), currency="RUB")}]
-
-        receipt = await asyncio.to_thread(Receipt.create, receipt_request, uuid.uuid4())
-        return {"receipt_id": receipt.id, "status": receipt.status}
+            result = await payment_provider.create_receipt(
+                payment_id=payment_id,
+                email=email,
+                items=receipt_items
+            )
+            logger.info(f"Receipt created for payment {payment_id}: {result}")
+            return result
+        except Exception as e:
+            logger.error(f"Receipt creation failed: {e}", exc_info=True)
+            raise HTTPException(500, f"Receipt creation failed: {str(e)}")
 
     async def handle_webhook(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         event = payload.get("event")
