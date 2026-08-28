@@ -38,7 +38,7 @@ class YooKassaProvider:
         order_id: str,
         user_id: int,
         capture: bool = False,
-        items: Optional[List[Dict[str, Any]]] = None,   # данные для чека
+        items: Optional[List[Dict[str, Any]]] = None,
         email: Optional[str] = None,
     ) -> Dict[str, Any]:
         if settings.PAYMENT_MOCK_ENABLED:
@@ -65,17 +65,20 @@ class YooKassaProvider:
 
         # Добавляем чек, если переданы товары и email
         if items and email:
-            customer = ReceiptCustomer(email=email)
-            receipt = Receipt()
-            receipt.customer = customer
+            receipt_items = []
             for item in items:
-                receipt_item = ReceiptItem(
-                    description=item["description"],
-                    quantity=item["quantity"],
-                    amount=Amount(value=item["amount"], currency="RUB"),
-                    vat_code=item.get("vat_code", 1)
+                receipt_items.append(
+                    ReceiptItem({
+                        "description": item["description"],
+                        "quantity": float(item["quantity"]),
+                        "amount": {"value": item["amount"], "currency": "RUB"},
+                        "vat_code": item.get("vat_code", 1)
+                    })
                 )
-                receipt.add_item(receipt_item)
+            receipt = Receipt()
+            receipt.customer = {"email": email}
+            receipt.tax_system_code = 1  # ОСН, можно изменить при необходимости
+            receipt.items = receipt_items
             payment_request.receipt = receipt
 
         import asyncio
