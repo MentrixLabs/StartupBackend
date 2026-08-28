@@ -46,8 +46,7 @@ class PaymentResponse(BaseModel):
 class CapturePaymentRequest(BaseModel):
     order_id: str
 
-# --- Эндпоинты ---
-
+# --- Эндпоинты ----
 @router.post("/create", response_model=PaymentResponse)
 async def create_payment_endpoint(
     req: CreatePaymentRequest,
