@@ -38,8 +38,9 @@ class YooKassaProvider:
         order_id: str,
         user_id: int,
         capture: bool = False,
+        items: Optional[List[Dict[str, Any]]] = None,   # данные для чека
+        email: Optional[str] = None,
     ) -> Dict[str, Any]:
-        # Если включена заглушка – возвращаем фиктивный ответ
         if settings.PAYMENT_MOCK_ENABLED:
             logger.info(f"MOCK: Creating payment for order {order_id}, amount {amount}")
             return {
@@ -48,9 +49,7 @@ class YooKassaProvider:
                 "status": "pending",
                 "created_at": datetime.utcnow().isoformat(),
             }
-        """
-        Создает платеж в ЮKassa.
-        """
+
         payment_request = PaymentRequest()
         payment_request.amount = Amount(value=amount, currency="RUB")
         payment_request.description = description
@@ -63,6 +62,25 @@ class YooKassaProvider:
             "order_id": order_id,
             "user_id": str(user_id),
         }
+
+        # Добавляем чек, если переданы товары и email
+        if items and email:
+            receipt_items = []
+            for item in items:
+                receipt_items.append(
+                    ReceiptItem(
+                        description=item["description"],
+                        quantity=item["quantity"],
+                        amount=Amount(value=item["amount"], currency="RUB"),
+                        vat_code=item.get("vat_code", 1)
+                    )
+                )
+            customer = ReceiptCustomer(email=email)
+            payment_request.receipt = Receipt(
+                items=receipt_items,
+                customer=customer,
+                # При необходимости можно добавить settlement
+            )
 
         import asyncio
         payment = await asyncio.to_thread(Payment.create, payment_request, uuid.uuid4())
@@ -207,7 +225,13 @@ payment_provider = YooKassaProvider()
 
 # --- Публичные функции (используются в API) ---
 
-async def create_payment(user_id: int, amount: float, description: str = "Оплата услуги") -> Dict[str, Any]:
+async def create_payment(
+    user_id: int,
+    amount: float,
+    description: str = "Оплата услуги",
+    items: Optional[List[Dict[str, Any]]] = None,
+    email: Optional[str] = None,
+) -> Dict[str, Any]:
     order_id = f"ORDER-{user_id}-{uuid.uuid4().hex[:8]}"
 
     async with async_session_maker() as session:
@@ -226,6 +250,8 @@ async def create_payment(user_id: int, amount: float, description: str = "Опл
             order_id=order_id,
             user_id=user_id,
             capture=False,
+            items=items,
+            email=email,
         )
         async with async_session_maker() as session:
             transaction = await PaymentTransactionDAO.find_one_or_none(order_id=order_id)

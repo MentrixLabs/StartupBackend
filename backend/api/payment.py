@@ -17,16 +17,6 @@ router = APIRouter(prefix="/payment", tags=["payment"])
 
 # --- Модели ---
 
-class CreatePaymentRequest(BaseModel):
-    amount: float
-    description: Optional[str] = "Оплата услуги"
-
-class PaymentResponse(BaseModel):
-    order_id: str
-    payment_id: str
-    confirmation_url: str
-    status: str
-
 # Модель для позиции чека
 class ReceiptItem(BaseModel):
     description: str          # наименование товара
@@ -41,6 +31,18 @@ class CreateReceiptRequest(BaseModel):
     email: Optional[str] = None  # если не передано, берётся из current_user
 
 # Запрос на захват платежа
+class CreatePaymentRequest(BaseModel):
+    amount: float
+    description: Optional[str] = "Оплата услуги"
+    items: List[ReceiptItem]          # обязательно для фискального чека
+    email: Optional[str] = None       # если не указан, будет взят из current_user
+
+class PaymentResponse(BaseModel):
+    order_id: str
+    payment_id: str
+    confirmation_url: str
+    status: str
+
 class CapturePaymentRequest(BaseModel):
     order_id: str
 
@@ -51,7 +53,18 @@ async def create_payment_endpoint(
     req: CreatePaymentRequest,
     current_user: User = Depends(get_current_user)
 ):
-    result = await create_payment(current_user.id, req.amount, req.description)
+    email = req.email or current_user.email
+    if not email:
+        raise HTTPException(400, "Email покупателя обязателен для формирования чека")
+    
+    items_data = [item.dict() for item in req.items]
+    result = await create_payment(
+        user_id=current_user.id,
+        amount=req.amount,
+        description=req.description,
+        items=items_data,
+        email=email
+    )
     return PaymentResponse(**result)
 
 @router.post("/capture")
