@@ -65,22 +65,18 @@ class YooKassaProvider:
 
         # Добавляем чек, если переданы товары и email
         if items and email:
-            receipt_items = []
-            for item in items:
-                receipt_items.append(
-                    ReceiptItem(
-                        description=item["description"],
-                        quantity=item["quantity"],
-                        amount=Amount(value=item["amount"], currency="RUB"),
-                        vat_code=item.get("vat_code", 1)
-                    )
-                )
             customer = ReceiptCustomer(email=email)
-            payment_request.receipt = Receipt(
-                items=receipt_items,
-                customer=customer,
-                # При необходимости можно добавить settlement
-            )
+            receipt = Receipt()
+            receipt.customer = customer
+            for item in items:
+                receipt_item = ReceiptItem(
+                    description=item["description"],
+                    quantity=item["quantity"],
+                    amount=Amount(value=item["amount"], currency="RUB"),
+                    vat_code=item.get("vat_code", 1)
+                )
+                receipt.add_item(receipt_item)
+            payment_request.receipt = receipt
 
         import asyncio
         payment = await asyncio.to_thread(Payment.create, payment_request, uuid.uuid4())
