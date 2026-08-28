@@ -1,7 +1,7 @@
 # backend/services/payment_service.py
 import logging
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 from fastapi import HTTPException
@@ -44,7 +44,7 @@ class YooKassaProvider:
             logger.info(f"MOCK: Creating payment for order {order_id}, amount {amount}")
             return {
                 "payment_id": f"mock-{uuid.uuid4().hex[:8]}",
-                "confirmation_url": "https://yoomoney.ru/pay",  # тестовая ссылка
+                "confirmation_url": "https://yoomoney.ru/pay",
                 "status": "pending",
                 "created_at": datetime.utcnow().isoformat(),
             }
@@ -55,7 +55,6 @@ class YooKassaProvider:
         payment_request.amount = Amount(value=amount, currency="RUB")
         payment_request.description = description
         payment_request.capture = capture
-        # Используем словарь, а не класс Confirmation (совместимо со всеми версиями)
         payment_request.confirmation = {
             "type": "redirect",
             "return_url": settings.YOOKASSA_RETURN_URL or "https://mentrixlabs.github.io/payment-success"
@@ -119,49 +118,42 @@ class YooKassaProvider:
         refund = await asyncio.to_thread(Refund.create, refund_request, uuid.uuid4())
         return {"refund_id": refund.id, "status": refund.status, "created_at": refund.created_at}
 
-    # backend/services/payment_service.py (дополнение)
-
-    async def create_receipt(
-        order_id: str,
-        user_id: int,
-        items: list,
-        email: str
-    ) -> Dict[str, Any]:
+    # ----- Новый метод для создания чека -----
+    async def create_receipt(self, payment_id: str, email: str, items: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Создаёт фискальный чек для успешного платежа.
-        Транзакция должна иметь статус 'succeeded'.
+        Отправляет запрос в ЮKassa на создание фискального чека для уже успешного платежа.
         """
-        async with async_session_maker() as session:
-            transaction = await PaymentTransactionDAO.find_one_or_none(order_id=order_id, user_id=user_id)
-            if not transaction:
-                raise HTTPException(404, "Transaction not found")
-            if transaction.status != "succeeded":
-                raise HTTPException(400, "Transaction not succeeded, cannot create receipt")
-            payment_id = transaction.provider_transaction_id
-            if not payment_id:
-                raise HTTPException(400, "No provider transaction id")
+        import asyncio
 
-        try:
-            # Подготавливаем данные для чека в формате, ожидаемом провайдером
-            receipt_items = []
-            for item in items:
-                receipt_items.append({
-                    "description": item["description"],
-                    "quantity": item["quantity"],
-                    "amount": item["amount"],
-                    "vat_code": item.get("vat_code", 1)
-                })
-
-            result = await payment_provider.create_receipt(
-                payment_id=payment_id,
-                email=email,
-                items=receipt_items
+        # Преобразуем элементы в объекты ReceiptItem
+        receipt_items = []
+        for item in items:
+            receipt_items.append(
+                ReceiptItem(
+                    description=item["description"],
+                    quantity=item["quantity"],
+                    amount=Amount(value=item["amount"], currency="RUB"),
+                    vat_code=item.get("vat_code", 1)
+                )
             )
-            logger.info(f"Receipt created for payment {payment_id}: {result}")
-            return result
-        except Exception as e:
-            logger.error(f"Receipt creation failed: {e}", exc_info=True)
-            raise HTTPException(500, f"Receipt creation failed: {str(e)}")
+
+        customer = ReceiptCustomer(email=email)
+
+        receipt_request = ReceiptRequest(
+            payment_id=payment_id,
+            items=receipt_items,
+            customer=customer,
+            send=True,  # Отправить чек покупателю на email
+            settlement=[]  # При необходимости можно добавить данные о рассчётах
+        )
+
+        receipt = await asyncio.to_thread(Receipt.create, receipt_request, uuid.uuid4())
+
+        return {
+            "receipt_id": receipt.id,
+            "status": receipt.status,
+            "registered_at": getattr(receipt, "registered_at", None),
+        }
 
     async def handle_webhook(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         event = payload.get("event")
@@ -344,3 +336,42 @@ async def create_refund(order_id: str, user_id: int, amount: float, description:
     except Exception as e:
         logger.error(f"Refund creation failed: {e}", exc_info=True)
         raise HTTPException(500, f"Refund failed: {str(e)}")
+
+
+# --- Новая публичная функция для создания чека ---
+async def create_receipt(order_id: str, user_id: int, items: List[Dict[str, Any]], email: str) -> Dict[str, Any]:
+    """
+    Создаёт фискальный чек для успешного платежа.
+    Транзакция должна иметь статус 'succeeded'.
+    """
+    async with async_session_maker() as session:
+        transaction = await PaymentTransactionDAO.find_one_or_none(order_id=order_id, user_id=user_id)
+        if not transaction:
+            raise HTTPException(404, "Transaction not found")
+        if transaction.status != "succeeded":
+            raise HTTPException(400, "Transaction not succeeded, cannot create receipt")
+        payment_id = transaction.provider_transaction_id
+        if not payment_id:
+            raise HTTPException(400, "No provider transaction id")
+
+    try:
+        # Подготавливаем элементы чека в формате, который ожидает провайдер
+        receipt_items = []
+        for item in items:
+            receipt_items.append({
+                "description": item["description"],
+                "quantity": item["quantity"],
+                "amount": item["amount"],
+                "vat_code": item.get("vat_code", 1)
+            })
+
+        result = await payment_provider.create_receipt(
+            payment_id=payment_id,
+            email=email,
+            items=receipt_items
+        )
+        logger.info(f"Receipt created for payment {payment_id}: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Receipt creation failed: {e}", exc_info=True)
+        raise HTTPException(500, f"Receipt creation failed: {str(e)}")
