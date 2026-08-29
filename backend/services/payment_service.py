@@ -67,13 +67,15 @@ class YooKassaProvider:
         if items and email:
             receipt_data = {
                 "customer": {"email": email},
-                "tax_system_code": 1,  # ОСН, можно изменить при необходимости
+                "tax_system_code": 1,
                 "items": [
                     {
                         "description": item["description"],
                         "quantity": float(item["quantity"]),
                         "amount": {"value": float(item["amount"]), "currency": "RUB"},
-                        "vat_code": item.get("vat_code", 1)
+                        "vat_code": item.get("vat_code", 1),
+                        "payment_subject": "service",      # признак предмета расчёта (услуга)
+                        "payment_mode": "full_payment"     # признак способа расчёта (полная оплата)
                     }
                     for item in items
                 ]
