@@ -1,6 +1,6 @@
-import torch
-from diffusers import Kandinsky5I2IPipeline
-from diffusers.utils import load_image
+#import torch
+#from diffusers import Kandinsky5I2IPipeline
+#from diffusers.utils import load_image
 from io import BytesIO
 import base64
 import logging
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # Глобальный пайплайн – инициализируем лениво
 _pipe = None
 
-
+"""
 def get_pipeline():
     global _pipe
     if _pipe is None:
@@ -38,10 +38,10 @@ def get_pipeline():
     return _pipe
 
 async def generate_infographics(goods_id: int, user_id: int, count: int = 4) -> List[str]:
-    """
-    Генерирует изображения для товара с помощью Kandinsky I2I.
-    Возвращает список data-URL (base64) или ссылки на placeholder при ошибке.
-    """
+    
+    #Генерирует изображения для товара с помощью Kandinsky I2I.
+    #Возвращает список data-URL (base64) или ссылки на placeholder при ошибке.
+    
     # 1. Получаем данные товара
     async with async_session_maker() as session:
         goods = await OzonItemDAO.find_one_or_none(id=goods_id, user_id=user_id)
@@ -115,8 +115,8 @@ async def generate_infographics(goods_id: int, user_id: int, count: int = 4) -> 
         else:
             await InfographicsDataDAO.add(goods_id=goods_id, generated_images=[], enhanced_images=[data_url])
 
-    return images
+    return images"""
 
 def _generate_placeholder_images(count: int, name: str) -> List[str]:
-    """Заглушка – возвращает ссылки на случайные изображения."""
+    #Заглушка – возвращает ссылки на случайные изображения.
     return [f"https://picsum.photos/seed/{name}_{i}/400/400" for i in range(count)]

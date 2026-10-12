@@ -24,7 +24,7 @@ requests
 gigachat
 diffusers
 transformers
-torch
+#torch
 accelerate
 reportlab
 yookassa
