@@ -74,6 +74,8 @@ class OzonParser:
         page = await self.__user_interaction(ParserConfig.BASE_OZON_URL, context)
         logger.info("9")
 
+        
+
         product_data = ParsingData.product_data()
 
         # ID продукта
@@ -151,38 +153,79 @@ class OzonParser:
         await asyncio.sleep(random.uniform(2, 3))
 
         # Основной запрос
-        await page.goto(self.__url, wait_until="domcontentloaded", timeout=30000)
+        await page.goto(self.__url, wait_until="domcontentloaded", timeout=60000)
+
+        # Ждём, пока Nuxt гидратирует страницу и появится state-див
+        try:
+            await page.wait_for_selector(
+                'div#__ozon, div[id="__ozon"]',
+                state="attached",
+                timeout=60000,
+            )
+        except Exception:
+            print("URL:", page.url)
+            print("TITLE:", await page.title())
+            html = await page.content()
+            for marker in ("Доступ ограничен", "captcha", "Подтвердите", "Ой!", "Antibot"):
+                if marker.lower() in html.lower():
+                    print(f"⚠️ Похоже на блокировку/капчу: {marker}")
+            # Сохраните HTML, чтобы посмотреть глазами
+            with open("/tmp/pdp_debug.html", "w", encoding="utf-8") as f:
+                f.write(html)
+            raise
+
+        await page.wait_for_selector(
+                        'div[id^="state-webDetailSKU-"], div[id^="state-webProductHeading-"]',
+                        state="attached",
+                        timeout=60000,
+                    )
+
         page_title = await page.title()
         if "Доступ ограничен" in page_title:
             raise Exception("Обнаружена страница блокировки")
 
-        # Дополнительные взаимодействия
         for _ in range(random.randint(2, 4)):
             await page.mouse.wheel(0, random.randint(300, 600))
             await asyncio.sleep(random.uniform(0.5, 1.5))
 
-        # Прохождение страницы защиты по возрасту
         try:
             adult_page = await page.query_selector('[data-widget="userAdultModal"]')
-
             if adult_page is not None:
                 year_of_birth_for_22y_old = ParserConfig.CURRENT_TIMESTAMP.date().year - 22
                 await page.locator('input[type="text"]').fill(f'10.10.{year_of_birth_for_22y_old}')
                 await page.get_by_role('button').get_by_text('Подтвердить').click()
                 await asyncio.sleep(random.uniform(0.9, 1.5))
-
                 await page.goto(self.__url, wait_until="domcontentloaded", timeout=10000)
-
         except Exception as e:
             print(f'Страница защиты возраста не пройдена: {e}')
 
         return page
 
-    async def __load_from_state(self, page, state_name):
-        state_locator = page.locator(f'div[id^="state-{state_name}-"]')
-        state_string = await state_locator.get_attribute('data-state')
-        state_json = json.loads(state_string)
-        return state_json
+    async def __load_from_state(self, page, state_name, timeout=60000):
+        selector = f'div[id^="state-{state_name}-"]'
+        try:
+            await page.wait_for_selector(selector, state="attached", timeout=timeout)
+        except Exception:
+            # Диагностика, чтобы понимать, что реально открылось
+            print("URL:", page.url)
+            print("TITLE:", await page.title())
+            html = await page.content()
+            for marker in ("Доступ ограничен", "captcha", "Подтвердите", "Ой!"):
+                if marker.lower() in html.lower():
+                    print(f"⚠️ Похоже на блокировку/капчу: {marker}")
+            # Попытка прочитать состояние из window.__NUXT__
+            nuxt_state = await page.evaluate(
+                "() => (window.__NUXT__ && window.__NUXT__.state) || null"
+            )
+            if nuxt_state:
+                print("ℹ️ window.__NUXT__.state доступен — можно парсить оттуда")
+            raise
+
+        state_locator = page.locator(selector)
+        state_string = await state_locator.first.get_attribute('data-state')
+        if not state_string:
+            raise RuntimeError(f"data-state пустой для {state_name}")
+        return json.loads(state_string)
 
     async def __load_all_reviews(self, page: Page, reviews_count: int):
         limit = min(reviews_count, 5)
